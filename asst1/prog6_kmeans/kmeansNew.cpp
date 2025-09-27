@@ -91,7 +91,6 @@ void workerThread(HelperArgs *const thread_args) {
         thread_args->clusterAssignments[m] = thread_args->k;
       }
     }
-
 }
 
 /**
@@ -114,7 +113,7 @@ void computeAssignments(WorkerArgs *const args) {
 
     std::thread workers[MAX_THREADS];
     HelperArgs helper_args[MAX_THREADS];
-    int numThreads = 16; // TODO !
+    int numThreads = 32; // TODO !
 
     // set up the threads
     for (int i=0; i<numThreads; i++) {

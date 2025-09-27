@@ -214,6 +214,56 @@ void absVector(float* values, float* output, int N) {
   }
 }
 
+void clampedExpVector(float* values, int* exponents, float* output, int N) {
+  __cs149_vec_float v;
+  __cs149_vec_int e;
+  __cs149_vec_float result = _cs149_vset_float(1.f);
+  __cs149_mask exp_done = _cs149_init_ones();
+  exp_done = _cs149_mask_not(exp_done);
+  __cs149_mask clamped = _cs149_init_ones();
+  clamped = _cs149_mask_not(exp_done);
+  __cs149_vec_int ones = _cs149_vset_int(1);
+  __cs149_vec_int counter = _cs149_vset_int(1);
+  __cs149_vec_float ninenines = _cs149_vset_float(9.999999f);
+  __cs149_mask maskAll = _cs149_init_ones();
+
+  for (int i=0; i<N; i+=VECTOR_WIDTH) {
+
+      result = _cs149_vset_float(1.f);
+      
+      __cs149_mask exp_done = _cs149_init_ones();
+      __cs149_mask clamped = _cs149_init_ones();
+      clamped = _cs149_mask_not(exp_done);
+
+      counter = _cs149_vset_int(1);
+
+      _cs149_vload_float(v, values+i, maskAll);
+      _cs149_vload_int(e, exponents+i, maskAll);
+      
+      while(_cs149_cntbits(exp_done) != 0){
+
+        // store the mask
+        _cs149_vgt_int(exp_done, counter, e, maskAll);
+        exp_done = _cs149_mask_not(exp_done) ;
+        // multiply entries in result by v once more
+        _cs149_vmult_float(result, v, result, exp_done);
+        // counter += 1
+        _cs149_vadd_int(counter, counter, ones, maskAll); 
+
+      }
+      // store the clamp mask
+      _cs149_vgt_float(clamped, result, ninenines, maskAll);
+      // move entries to result vector if result>nines
+      _cs149_vmove_float(result, ninenines, clamped);
+
+      // store final output
+      if (N - i < VECTOR_WIDTH) {
+        maskAll = _cs149_init_ones(N-i);
+      }
+      _cs149_vstore_float(output+i, result, maskAll);
+  }
+
+}
 
 // accepts an array of values and an array of exponents
 //
@@ -240,17 +290,6 @@ void clampedExpSerial(float* values, int* exponents, float* output, int N) {
   }
 }
 
-void clampedExpVector(float* values, int* exponents, float* output, int N) {
-
-  //
-  // CS149 STUDENTS TODO: Implement your vectorized version of
-  // clampedExpSerial() here.
-  //
-  // Your solution should work for any value of
-  // N and VECTOR_WIDTH, not just when VECTOR_WIDTH divides N
-  //
-  
-}
 
 // returns the sum of all elements in values
 float arraySumSerial(float* values, int N) {

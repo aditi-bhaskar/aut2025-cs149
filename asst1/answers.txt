@@ -9,3 +9,24 @@ VECTOR_WIDTH | vector utilization
 Vector utilization decreases as VECTOR_WIDTH changes. In our implementation, we loop through multiplies up to the maximum exponent 
 in the current vector. When the vector width is larger, this results in more amount of multiplies even for smaller exponents in the chunk. 
 For example, if one chunk of exponents is 100 2 2 2, then a vector chunk of 2 is better than a vector chunk of 4. 
+
+
+Program 4
+
+1. The ISPC implementation speedup for single CPU core (no tasks) is 4.37x. 
+The ISPC implementation speedup when using all cores (with tasks) is 31.65x. 
+
+The speedup due to SIMD parallelization is 4.37x. 
+The speedup due to multi-core parallelization 7.24x. 
+
+2. The input we choose is if each element in values is 2.99999. 
+The resulting speedup is 6.83x from ISPC, and 46.66x from task ISPC. 
+The modification improves SIMD speedup. This is because every number will require lots of iterations to converge, but 
+every element in the vector would require the same (large) number of iterations, and they would converge at once. 
+There is not much of a speedup for multi-core (which is 46.66/6.83 = 6.83 compared to 7.24) because [ TODO ] 
+
+3. The input we choose is if all the elements in values is 1, except every 8th element is 2.78. (TODO: which we tuned?)
+The resulting speedup is 0.84x from ISPC, and 5.09x from task ISPC. 
+We chose this input if we add a longer iteration number every 8th element, this forces the ISPC vector to take additional iterations
+for all the other elements which are not necessary, and in the sequential implementation, those other elements would converge very 
+quickly so there is not much of a difference. 

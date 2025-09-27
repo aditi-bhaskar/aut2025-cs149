@@ -29,7 +29,7 @@ of loops in mandel().)
 Part 2]
 1. The speedup is 9.87x using task ISPC, which was 1.95x speedup over the version without tasks. 
 2. We change the number of tasks the code creates from 2 to 16, which gives a 32.18x speedup over the sequential version of the code. 
-We chose 16 tasks because [ TODO ]. (We found with 16 and 32 tasks, there was a similar speedup.)
+We chose 16 tasks because **[ TODO ]**. (We found with 16 and 32 tasks, there was a similar speedup.)
 
 ====================================================================================================================================
 
@@ -45,10 +45,24 @@ The speedup due to multi-core parallelization 7.24x.
 The resulting speedup is 6.83x from ISPC, and 46.66x from task ISPC. 
 The modification improves SIMD speedup. This is because every number will require lots of iterations to converge, but 
 every element in the vector would require the same (large) number of iterations, and they would converge at once. 
-There is not much of a speedup for multi-core (which is 46.66/6.83 = 6.83 compared to 7.24) because [ TODO ] 
+There is not much of a speedup for multi-core (which is 46.66/6.83 = 6.83 compared to 7.24) because **[ TODO ]**
 
-3. The input we choose is if all the elements in values is 1, except every 8th element is 2.78. (TODO: which we tuned?)
+3. The input we choose is if all the elements in values is 1, except every 8th element is 2.78. (**TODO: which we tuned?**)
 The resulting speedup is 0.84x from ISPC, and 5.09x from task ISPC. 
 We chose this input if we add a longer iteration number every 8th element, this forces the ISPC vector to take additional iterations
 for all the other elements which are not necessary, and in the sequential implementation, those other elements would converge very 
 quickly so there is not much of a difference. 
+
+====================================================================================================================================
+
+Program 6
+
+First, we timed the average number of seconds that each of the functions computeAssignments(), computeCentroids(), and computeCost() took in 
+iterations of the loop. 
+
+computeAssignments: 0.301481
+computeCentroids: 0.0923297
+computeCost: 0.0440835
+
+We see that most of the time being spent in the code is in computeAssignments(), which is where we decided to focus our speedup. 
+

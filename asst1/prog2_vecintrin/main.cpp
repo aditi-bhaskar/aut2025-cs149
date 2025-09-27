@@ -214,7 +214,57 @@ void absVector(float* values, float* output, int N) {
   }
 }
 
+// accepts an array of values and an array of exponents
+//
+// For each element, compute values[i]^exponents[i] and clamp value to
+// 9.999.  Store result in output.
+void clampedExpSerial(float* values, int* exponents, float* output, int N) {
+  __cs149_vec_float v;
+  __cs149_vec_int e;
+  __cs149_vec_float result = _cs149_vset_float(1.f);
+  __cs149_mask exp_done = _cs149_init_ones();
+  exp_done = _cs149_mask_not(exp_done);
+  __cs149_mask clamped = _cs149_init_ones();
+  clamped = _cs149_mask_not(exp_done);
+  __cs149_vec_int ones = _cs149_vset_int(1);
+  __cs149_vec_int counter = _cs149_vset_int(1);
+  __cs149_vec_float ninenines = _cs149_vset_float(9.999999f);
+  __cs149_mask maskAll;
 
+  for (int i=0; i<N; i+=VECTOR_WIDTH) {
+
+      result = _cs149_vset_float(1.f);
+      maskAll = _cs149_init_ones();
+      
+      __cs149_mask exp_done = _cs149_init_ones();
+      exp_done = _cs149_mask_not(exp_done);
+      __cs149_mask clamped = _cs149_init_ones();
+      clamped = _cs149_mask_not(exp_done);
+
+      _cs149_vload_float(v, values+i, maskAll);
+      _cs149_vload_int(e, exponents+i, maskAll);
+      while(_cs149_cntbits(exp_done) != VECTOR_WIDTH) {
+        // store the mask
+        _cs149_vgt_int(exp_done, counter, e, maskAll);
+        // multiply entries in result by v once more
+        _cs149_vmult_float(result, v, result, exp_done);
+        // counter += 1
+        _cs149_vadd_int(counter, counter, ones, maskAll); 
+
+      }
+      // store the clamp mask
+      //_cs149_vgt_float(clamped, result, ninenines, maskAll);
+      // move entries to result vector if result>nines
+      // _cs149_vmove_float(result, ninenines, clamped);
+
+      // store final output
+      // _cs149_vstore_float(output+i, result, maskAll);
+    //  _cs149_vstore_float(output+i, ninenines, maskAll);
+  }
+
+}
+
+/*
 // accepts an array of values and an array of exponents
 //
 // For each element, compute values[i]^exponents[i] and clamp value to
@@ -239,6 +289,7 @@ void clampedExpSerial(float* values, int* exponents, float* output, int N) {
     }
   }
 }
+*/
 
 void clampedExpVector(float* values, int* exponents, float* output, int N) {
 

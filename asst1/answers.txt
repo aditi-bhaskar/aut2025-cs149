@@ -1,0 +1,11 @@
+Program 2
+
+VECTOR_WIDTH | vector utilization
+-------------+--------------------
+      2      |      92.4%
+      4      |      90.8%
+      8      |      89.9%
+     16      |      89.5% 
+Vector utilization decreases as VECTOR_WIDTH changes. In our implementation, we loop through multiplies up to the maximum exponent 
+in the current vector. When the vector width is larger, this results in more amount of multiplies even for smaller exponents in the chunk. 
+For example, if one chunk of exponents is 100 2 2 2, then a vector chunk of 2 is better than a vector chunk of 4. 

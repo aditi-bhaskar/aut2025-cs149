@@ -10,6 +10,28 @@ Vector utilization decreases as VECTOR_WIDTH changes. In our implementation, we 
 in the current vector. When the vector width is larger, this results in more amount of multiplies even for smaller exponents in the chunk. 
 For example, if one chunk of exponents is 100 2 2 2, then a vector chunk of 2 is better than a vector chunk of 4. 
 
+====================================================================================================================================
+
+Program 3
+
+Part 1] For view 1, the speedup we get is 5.06x using ISPC, and for view 2, the speedup we get is 4.33x using ISPC.
+The maximum speedup we would expect from these CPUs would be 8x, because they do eight-wide SIMD vector instructions, meaning 
+the values for 8 pixels could be computed at once. 
+However, we do not get the maximum speedup, most likely due to different number of iterations of the for loop in the mandel() 
+function for different elements in each gang. We know that all elements in the 8-wide vector need to execute to completion, which means 
+each execution is bottlenecked by the slowest element (before the next gang can be computed). 
+We can confirm this with the difference between image 1 and 2 --- there is more of a speedup with view 1, likely because there are more 
+chunks of consecutive pixels that have similar values (num. of loops in mandel()), versus in view 2, the densities are more spread out and
+less balanced within one vector. 
+(The parts of the image that present challenges for SIMD execution would be 8 consecutive pixels that have different end values / number 
+of loops in mandel().)
+
+Part 2]
+1. The speedup is 9.87x using task ISPC, which was 1.95x speedup over the version without tasks. 
+2. We change the number of tasks the code creates from 2 to 16, which gives a 32.18x speedup over the sequential version of the code. 
+We chose 16 tasks because [ TODO ]. (We found with 16 and 32 tasks, there was a similar speedup.)
+
+====================================================================================================================================
 
 Program 4
 

@@ -5,6 +5,7 @@
 #include <thread>
 
 #include "CycleTimer.h"
+#include <iostream>
 
 using namespace std;
 
@@ -61,6 +62,38 @@ double dist(double *x, double *y, int nDim) {
   return sqrt(accum);
 }
 
+
+
+#define MAX_THREADS 32
+
+typedef struct {
+  double *data;
+  int *clusterAssignments;
+  double *minDist;
+  int localM;
+  double *clusterCentroids;
+  int N;
+  int k;
+
+  int threadId;
+  int numThreads;
+} HelperArgs;
+
+
+// helper function for each thread
+void workerThread(HelperArgs *const thread_args) {
+
+    for (int m = 0; m < thread_args->localM; m++) {
+      double d = dist(&thread_args->data[m * thread_args->N],
+                      &thread_args->clusterCentroids[thread_args->k * thread_args->N], thread_args->N);
+      if (d < thread_args->minDist[m]) {
+        thread_args->minDist[m] = d;
+        thread_args->clusterAssignments[m] = thread_args->k;
+      }
+    }
+
+}
+
 /**
  * Assigns each data point to its "closest" cluster centroid.
  */
@@ -73,20 +106,58 @@ void computeAssignments(WorkerArgs *const args) {
     args->clusterAssignments[m] = -1;
   }
 
+  // float dist_time = 0;
+  // int num_iterations = 0;
+  // float sum_time = 0;
   // Assign datapoints to closest centroids
   for (int k = args->start; k < args->end; k++) {
-    for (int m = 0; m < args->M; m++) {
-      double d = dist(&args->data[m * args->N],
-                      &args->clusterCentroids[k * args->N], args->N);
-      if (d < minDist[m]) {
-        minDist[m] = d;
-        args->clusterAssignments[m] = k;
-      }
+
+    std::thread workers[MAX_THREADS];
+    HelperArgs helper_args[MAX_THREADS];
+    int numThreads = 8; // TODO !
+
+    // set up the threads
+    for (int i=0; i<numThreads; i++) {
+
+          // cout << "args->M  * i / numThreads " << args->M * i / numThreads << endl;
+          // cout << "args->M * i / numThreads " << args->M * i / numThreads << endl;
+
+          helper_args[i].data = &args->data[args->M  * i / numThreads];
+          helper_args[i].clusterAssignments = &args->clusterAssignments[args->M * i / numThreads];
+          helper_args[i].minDist = &minDist[args->M * i / numThreads];
+          helper_args[i].localM = args->M / numThreads; 
+          helper_args[i].clusterCentroids = args->clusterCentroids;
+
+          helper_args[i].N = args->N;
+          helper_args[i].k = k;
+
+          helper_args[i].threadId = i;
+          helper_args[i].numThreads = numThreads;
+
     }
+
+    // Spawn the worker threads.  Note that only numThreads-1 std::threads
+    // are created and the main application thread is used as a worker
+    // as well.
+    for (int i=1; i<numThreads; i++) {
+        // cout << "spawning " << i << endl;
+        workers[i] = std::thread(workerThread, &helper_args[i]);
+    }
+
+    workerThread(&helper_args[0]);
+
+    // join worker threads
+    for (int i=1; i<numThreads; i++) {
+        // cout << "joining " << i << endl;
+        workers[i].join();
+    }
+
   }
 
   free(minDist);
 }
+
+
 
 /**
  * Given the cluster assignments, computes the new centroid locations for
@@ -195,6 +266,11 @@ void kMeansThread(double *data, double *clusterCentroids, int *clusterAssignment
     currCost[k] = 0.0;
   }
 
+  float assign_comp = 0;
+  float centroids_comp = 0;
+  float cost_comp = 0;
+  int num_loops = 0;
+
   /* Main K-Means Algorithm Loop */
   int iter = 0;
   while (!stoppingConditionMet(prevCost, currCost, epsilon, K)) {
@@ -202,17 +278,34 @@ void kMeansThread(double *data, double *clusterCentroids, int *clusterAssignment
     for (int k = 0; k < K; k++) {
       prevCost[k] = currCost[k];
     }
+    num_loops++;
 
     // Setup args struct
     args.start = 0;
     args.end = K;
 
+    float start_time = CycleTimer::currentSeconds();
     computeAssignments(&args);
+    assign_comp += CycleTimer::currentSeconds() - start_time;
+
+    start_time = CycleTimer::currentSeconds();
     computeCentroids(&args);
+    centroids_comp += CycleTimer::currentSeconds() - start_time;
+
+    start_time = CycleTimer::currentSeconds();
     computeCost(&args);
+    cost_comp += CycleTimer::currentSeconds() - start_time;
 
     iter++;
   }
+
+  assign_comp /= num_loops;
+  centroids_comp /= num_loops;
+  cost_comp /= num_loops;
+  
+  std::cout << "assign_comp: " << assign_comp << std::endl;
+  std::cout << "centroids_comp: " << centroids_comp << std::endl;
+  std::cout << "cost_comp: " << cost_comp << std::endl;
 
   free(currCost);
   free(prevCost);

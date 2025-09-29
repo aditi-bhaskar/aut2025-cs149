@@ -55,6 +55,8 @@ We chose this input if we add a longer iteration number every 8th element, this 
 for all the other elements which are not necessary, and in the sequential implementation, those other elements would converge very 
 quickly so there is not much of a difference. 
 
+TODO * for q3, go with 2.99999 for now because it's easier to explain
+
 ====================================================================================================================================
 
 Program 6
@@ -68,3 +70,11 @@ computeCost: 0.0440835
 
 We see that most of the time being spent in the code is in computeAssignments(), which is where we decided to focus our speedup. 
 
+
+After some modifications: (not enough optimizing!)
+assign_comp: 0.0510605
+centroids_comp: 0.0389844
+cost_comp: 0.0703796
+[Total Time]: 5656.665 ms
+
+TODO * Think about the order of the loops & which variable is the largest. Think about data reuse + caches when using k as outer loop and m as inner loop. data eviction; caches.

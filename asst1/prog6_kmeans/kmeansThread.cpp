@@ -73,7 +73,8 @@ typedef struct {
   int localM;
   double *clusterCentroids;
   int N;
-  int k;
+  int start;
+  int end;
 
   int threadId;
   int numThreads;
@@ -83,12 +84,26 @@ typedef struct {
 void workerThread(HelperArgs *const thread_args) {
 
     for (int m = 0; m < thread_args->localM; m++) {
-      double d = dist(&thread_args->data[m * thread_args->N],
-                      &thread_args->clusterCentroids[thread_args->k * thread_args->N], thread_args->N);
-      if (d < thread_args->minDist[m]) {
-        thread_args->minDist[m] = d;
-        thread_args->clusterAssignments[m] = thread_args->k;
+      
+      // store arr to reduce overhead of having to reload it everytime to update it
+      double localMinDist = thread_args->minDist[m];
+      int localClusterAssignment = thread_args->clusterAssignments[m];
+
+      for (int k = thread_args->start; k < thread_args->end; k++) { // k in [0, 3)
+
+          // cout << "data address: " << &thread_args->data[m * thread_args->N] << "\n";
+
+          double d = dist(&thread_args->data[m * thread_args->N],
+                          &thread_args->clusterCentroids[k * thread_args->N], thread_args->N);
+          
+          if (d < localMinDist) {
+            localMinDist = d;
+            localClusterAssignment = k;
+          }
       }
+
+      thread_args->minDist[m] = localMinDist;
+      thread_args->clusterAssignments[m] = localClusterAssignment;
     }
 
 }
@@ -109,7 +124,6 @@ void computeAssignments(WorkerArgs *const args) {
   // int num_iterations = 0;
   // float sum_time = 0;
   // Assign datapoints to closest centroids
-  for (int k = args->start; k < args->end; k++) {
 
     std::thread workers[MAX_THREADS];
     HelperArgs helper_args[MAX_THREADS];
@@ -125,7 +139,8 @@ void computeAssignments(WorkerArgs *const args) {
           helper_args[i].clusterCentroids = args->clusterCentroids;
 
           helper_args[i].N = args->N;
-          helper_args[i].k = k;
+          helper_args[i].start = args->start;
+          helper_args[i].end = args->end;
 
           helper_args[i].threadId = i;
           helper_args[i].numThreads = numThreads;
@@ -146,11 +161,8 @@ void computeAssignments(WorkerArgs *const args) {
         workers[i].join();
     }
 
-  }
-
   free(minDist);
 }
-
 
 
 /**

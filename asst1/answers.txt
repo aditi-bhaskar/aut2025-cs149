@@ -59,6 +59,29 @@ TODO * for q3, go with 2.99999 for now because it's easier to explain
 
 ====================================================================================================================================
 
+Program 5
+
+The output of the program is
+[saxpy ispc]:           [11.294] ms     [26.387] GB/s   [3.542] GFLOPS
+[saxpy task ispc]:      [10.734] ms     [27.765] GB/s   [3.727] GFLOPS
+There is 1.05x speedup from using ISPC with tasks, so there was not a large benefit to using tasks. 
+We believe that this is due to the program mostly being memory bottlenecked: The actual operation of saxpy is very simple (scalar
+multiplication and addition) but would require moving two 20M-element vectors (along with the result vector). (This is similar to 
+an example discussed in class.) 
+Regardless of how the computation is parallelized, we cannot speed up the memory bandwidth, which we believe accounts for the majority 
+of the time of the program, so we do not think it can be substantially improved. 
+
+# One experiment we tried was to setting result[i] = 0 in both saxpy_ispc and saxpy_ispc_task (instead of actually running the 
+# scalar multiplication and addition). This would require doing the same amount of memory movement 
+
+Our other hypothesis is that the ISPC implementation is already parallelized using threads. We tried changing the number of tasks from 
+64 to 1, and found there was no speedup. This suggests that because of the "foreach" loops, each thread is already being used at high 
+capacity. 
+
+TODO: we should check
+
+====================================================================================================================================
+
 Program 6
 
 First, we timed the average number of seconds that each of the functions computeAssignments(), computeCentroids(), and computeCost() took in 

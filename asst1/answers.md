@@ -1,5 +1,40 @@
 ## Program 1
 
+We plot a graph of speedup compared to the reference sequential implementation as a function of the number of threads used for view 1. 
+
+<p align="center">
+<img src="figs/speedup_vs_threads_view1.png" width="400"/>
+<p/>
+
+We find that speedup is not fully linear in the number of threads used. For example, the speedup using 3 threads is slower than 
+would be expected if it was linear. This is because the amount of computations for `mandelbrot()` is not evenly distributed across the 
+three threads. 
+Specifically, when using three threads, the middle section would have more iterations because its pixels end up having relatively 
+higher values, and this is a result of splitting the image horizontally for the threads. 
+When we compare view 2, we find that the plot of speedup vs. num threads is roughly linear, which is likely because the figure has 
+roughly similar pixel values throughout (and is not so obviously different horizontally). 
+
+<p align="center">
+<img src="figs/speedup_vs_threads_view2.png" width="400"/>
+<p/>
+
+We then measured the amount of time each thread requires to complete its work. We found that the times for each thread were pretty 
+dissimilar: for example, for three threads, the times per thread were `[0.103827, 1.07242, 1.23648]` seconds. 
+This supports that the partitioning of the image simply in horizontal threads is not efficient. 
+
+We modified the mapping of work to the threads to achieve a greater speedup. Instead of chunking, for a `n` thread implementation, we 
+essentially assigned every `n`-th row to each worker. So, thread 0 would get rows `0, n, 2n, ...` and thread 1 would get 
+rows `1, 1+n, 1+2n, ...` and so on. This meant there were fewer "full black chunks" or "full white chunks" that made the load imbalanced
+between threads. Specifically, our implementation had a loop like: 
+
+`for(int row = thread_id; row < height; row += num_threads)`
+
+to assign rows to threads. 
+
+The final 8-thread speedup was **7.28x**. For 16 threads, we get a speedup of **7.15x**. The performance is not greater than 
+running with 8 threads. This is because our processor has four cores with two hyper-threads each, so we cannot run 16 processes 
+in parallel anyways. 
+
 ## Program 2
 
 | `VECTOR_WIDTH` | vector utilization | 

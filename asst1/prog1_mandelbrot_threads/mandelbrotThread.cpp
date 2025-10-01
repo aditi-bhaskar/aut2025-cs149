@@ -9,7 +9,7 @@
 
 #define MAX_THREADS 32
 
-float worker_thread_durations[MAX_THREADS] =  {0};
+float worker_thread_durations[MAX_THREADS] = {0};
 
 typedef struct {
     float x0, x1;
@@ -31,6 +31,12 @@ extern void mandelbrotSerial(
     int output[]);
 
 
+extern void mandelbrotThreadEqualizer(
+    float x0, float y0, float x1, float y1,
+    int width, int height,
+    int threadId, int numThreads,
+    int maxIterations,
+    int output[]);
 //
 // workerThreadStart --
 //
@@ -45,10 +51,10 @@ void workerThreadStart(WorkerArgs * const args) {
 //     int output[])
 // {
 
+    // timing
     float worker_thread_start_time = CycleTimer::currentSeconds();
 
     int startRow = args->threadId * ceil(1.0 * args->height / args->numThreads);
-
     int max_total_rows = (int) ceil(1.0 * args->height / args->numThreads);
     int remaining_rows = (int) args->height - startRow;
     int totalRows = std::min(max_total_rows, remaining_rows); // ceiling of float division
@@ -56,19 +62,15 @@ void workerThreadStart(WorkerArgs * const args) {
     mandelbrotSerial(args->x0, args->y0, args->x1, args->y1, args->width, args->height, 
                     startRow, totalRows, args->maxIterations, args->output);
 
+
+    // mandelbrotThreadEqualizer(args->x0, args->y0, args->x1, args->y1, args->width, args->height, 
+    //                 args->threadId, args->numThreads, args->maxIterations, args->output);
+
     float worker_thread_duration = CycleTimer::currentSeconds() - worker_thread_start_time;
 
+    // timing
     worker_thread_durations[args->threadId] += worker_thread_duration;
 
-    // std::cout << "worker_thread_duration " << worker_thread_duration << "  threadid: " << args->threadId << std::endl;
-
-    // TODO FOR CS149 STUDENTS: Implement the body of the worker
-    // thread here. Each thread should make a call to mandelbrotSerial()
-    // to compute a part of the output image.  For example, in a
-    // program that uses two threads, thread 0 could compute the top
-    // half of the image and thread 1 could compute the bottom half.
-
-    // printf("Hello world from thread %d\n", args->threadId);
 }
 
 //

@@ -11,6 +11,13 @@ extern void mandelbrotSerial(
     int maxIterations,
     int output[]);
 
+extern void mandelbrotThreadEqualizer(
+    float x0, float y0, float x1, float y1,
+    int width, int height,
+    int threadId, int numThreads,
+    int maxIterations,
+    int output[]);
+
 extern void mandelbrotThread(
     int numThreads,
     float x0, float y0, float x1, float y1,

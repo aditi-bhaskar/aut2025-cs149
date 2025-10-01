@@ -69,10 +69,24 @@ of loops in `mandel()`.)
 
 ### Part 2
 1. The speedup is 9.87x using task ISPC, which was 1.95x speedup over the version without tasks. 
-2. We change the number of tasks the code creates from 2 to 16, which gives a 32.18x speedup over the sequential version of the code. 
-We chose 16 tasks because **[ TODO ]**. (We found with 16 and 32 tasks, there was a similar speedup.)
+2. The mandelbrot image does not take the same energy to generate each of its subsections, and ISPC can load the next task as soon as the current task is complete. While the CPU can only handle 8 tasks concurrently, dividing the image into more than 8 tasks may be optimal in the (extreme) case that one of the tasks gets the brightest part of the image, and the rest of the tasks get completely dark sections.
 
-TODO * Try non- powers of 2
+To test this, we run task ISPC on the following numbers of tasks (see table below) for numbers of tasks above 8, and find that 20 tasks achieves over 32x speedup over the sequential version. Increasing the number of tasks beyond 20 allows for more granular distribution of the task, but does not increase the speedup notably. 
+
+20 is a nice number of tasks since the height of the image (800) is evenly divisible by 20 into 40 tasks.
+
+| number of tasks | speedup from sequential -> task ISPC | 
+| :---: | :---: | 
+|     8       |      19.01x  |
+|     16      |      28.54x  |
+|     20      |      32.64x  |
+|     32      |      32.68x  |
+|     40      |      33.09x  |
+|     50      |      33.66x  |
+|     100     |      33.92x  | 
+|     200     |      34.45x  |
+
+ ** TODO check in office hours if the answer to this is rigorous enough
 
 ## Program 4
 
@@ -87,13 +101,12 @@ The modification improves SIMD speedup. This is because every number will requir
 every element in the vector would require the same (large) number of iterations, and they would converge at once. 
 There is not much of a speedup for multi-core (which is 46.66/6.83 = 6.83 compared to 7.24) because **[ TODO ]**
 
-3. The input we choose is if all the elements in values is 1, except every 8th element is `2.78`. (**TODO: which we tuned?**)
-The resulting speedup is 0.84x from ISPC, and 5.09x from task ISPC. 
-We chose this input if we add a longer iteration number every 8th element, this forces the ISPC vector to take additional iterations
+3. The input we choose is if all the elements in values is 1, except every 8th element is 2.99999. The resulting speedup is 0.91x from ISPC (over sequential) and 6.25x  from task ISPC (over sequential). We chose this input if we add a longer iteration number every 8th element, this forces the ISPC vector to take additional iterations
 for all the other elements which are not necessary, and in the sequential implementation, those other elements would converge very 
-quickly so there is not much of a difference. 
+quickly so there is not much of a difference.
 
-TODO * for q3, go with 2.99999 for now because it's easier to explain
+<!-- except every 8th element is `2.78`. (**TODO: which we tuned?**)
+The resulting speedup is 0.84x from ISPC, and 5.09x from task ISPC. -->
 
 ## Program 5
 

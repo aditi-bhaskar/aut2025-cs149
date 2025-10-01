@@ -38,8 +38,8 @@ int main() {
         // values[i] = .001f + 2.998f * static_cast<float>(rand()) / RAND_MAX;
         
         values[i] = 1;
-        if (i%8 == 0) {values[i] = 2.78;}
-       //if (i == 0) {values[i] = 2.99999;}
+        // if (i%8 == 0) {values[i] = 2.78;}
+       if (i%8 == 0) {values[i] = 2.99999;}
 
     }
 

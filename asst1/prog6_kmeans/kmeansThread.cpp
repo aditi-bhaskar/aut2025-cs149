@@ -79,7 +79,6 @@ typedef struct {
   int numThreads;
 } HelperArgs;
 
-
 // helper function for each thread
 void workerThread(HelperArgs *const thread_args) {
 

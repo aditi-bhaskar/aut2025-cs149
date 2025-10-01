@@ -88,6 +88,12 @@ To test this, we run task ISPC on the following numbers of tasks (see table belo
 
  ** TODO check in office hours if the answer to this is rigorous enough
 
+
+#### Extra Credit: 
+What are differences between the thread abstraction (used in Program 1) and the ISPC task abstraction?
+In both cases, there are a limited number of hardware threads (8 threads across 4 cores with 2 threads each, in this case). With threads, the OS will spend a lot of time context switching between 10000 software threads scheduled over 8 hardware threads - this involves pushing registers onto the stack and popping them. Overall, there is a lot of software OS overhead. With the ISPC tasks, there might be 10000 tasks to do, but they get compiled down to execute on up to SIMD-width data in parallel across gangs. The usage of SIMD and gangs divides the number of total instruction fetch/decode streams by the SIMD width. Plus, ISPC doesn't launch all the possible tasks at once but rather maintains the pending tasks in a queue, and waits for a hardware thread to free up before executing the next ISPC gang.
+
+
 ## Program 4
 
 1. The ISPC implementation speedup for single CPU core (no tasks) is 4.37x. 

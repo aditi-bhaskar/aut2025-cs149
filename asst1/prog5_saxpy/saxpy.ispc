@@ -5,9 +5,14 @@ export void saxpy_ispc(uniform int N,
                             uniform float Y[],
                             uniform float result[])
 {
-    foreach (i = 0 ... N) {           
+
+    for(int i = 0; i < N; i++) {
         result[i] = scale * X[i] + Y[i];
     }
+
+    //foreach (i = 0 ... N) {           
+    //    result[i] = scale * X[i] + Y[i];
+    //}
 }
 
 task void saxpy_ispc_task(uniform int N,
@@ -34,6 +39,7 @@ export void saxpy_ispc_withtasks(uniform int N,
 {
 
     uniform int span = N / 64;  // 64 tasks
+   //  uniform int span = N;  // 64 tasks
 
     launch[N/span] saxpy_ispc_task(N, span, scale, X, Y, result);
 }

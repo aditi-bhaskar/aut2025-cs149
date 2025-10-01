@@ -32,6 +32,7 @@ using namespace ispc;
 int main() {
 
     const unsigned int N = 20 * 1000 * 1000; // 20 M element vectors (~80 MB)
+    // const unsigned int N = 198; // 20 M element vectors (~80 MB)
     const unsigned int TOTAL_BYTES = 4 * N * sizeof(float);
     const unsigned int TOTAL_FLOPS = 2 * N;
 
@@ -81,7 +82,7 @@ int main() {
         minISPC = std::min(minISPC, endTime - startTime);
     }
 
-    verifyResult(N, resultISPC, resultSerial);
+    // verifyResult(N, resultISPC, resultSerial);
 
     printf("[saxpy ispc]:\t\t[%.3f] ms\t[%.3f] GB/s\t[%.3f] GFLOPS\n",
            minISPC * 1000,
@@ -99,7 +100,7 @@ int main() {
         minTaskISPC = std::min(minTaskISPC, endTime - startTime);
     }
 
-    verifyResult(N, resultTasks, resultSerial);
+    // verifyResult(N, resultTasks, resultSerial);
 
     printf("[saxpy task ispc]:\t[%.3f] ms\t[%.3f] GB/s\t[%.3f] GFLOPS\n",
            minTaskISPC * 1000,

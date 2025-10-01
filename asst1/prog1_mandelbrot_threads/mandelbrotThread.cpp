@@ -2,8 +2,14 @@
 #include <thread>
 #include <cmath>
 #include <algorithm>
+#include <iostream>
 
 #include "CycleTimer.h"
+
+
+#define MAX_THREADS 32
+
+float worker_thread_durations[MAX_THREADS] =  {0};
 
 typedef struct {
     float x0, x1;
@@ -39,6 +45,8 @@ void workerThreadStart(WorkerArgs * const args) {
 //     int output[])
 // {
 
+    float worker_thread_start_time = CycleTimer::currentSeconds();
+
     int startRow = args->threadId * ceil(1.0 * args->height / args->numThreads);
 
     int max_total_rows = (int) ceil(1.0 * args->height / args->numThreads);
@@ -47,6 +55,12 @@ void workerThreadStart(WorkerArgs * const args) {
 
     mandelbrotSerial(args->x0, args->y0, args->x1, args->y1, args->width, args->height, 
                     startRow, totalRows, args->maxIterations, args->output);
+
+    float worker_thread_duration = CycleTimer::currentSeconds() - worker_thread_start_time;
+
+    worker_thread_durations[args->threadId] += worker_thread_duration;
+
+    // std::cout << "worker_thread_duration " << worker_thread_duration << "  threadid: " << args->threadId << std::endl;
 
     // TODO FOR CS149 STUDENTS: Implement the body of the worker
     // thread here. Each thread should make a call to mandelbrotSerial()
@@ -68,7 +82,7 @@ void mandelbrotThread(
     int width, int height,
     int maxIterations, int output[])
 {
-    static constexpr int MAX_THREADS = 32;
+    // static constexpr int MAX_THREADS = 32;
 
     if (numThreads > MAX_THREADS)
     {
@@ -111,5 +125,9 @@ void mandelbrotThread(
     for (int i=1; i<numThreads; i++) {
         workers[i].join();
     }
-}
 
+    for (int i=0; i<numThreads; i++) {
+        std::cout << "worker_thread_duration: " << i << " : " << worker_thread_durations[i] << std::endl;
+    }
+
+}

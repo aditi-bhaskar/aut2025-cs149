@@ -71,6 +71,12 @@ double dist(double *x, double *y, int nDim) {
  * 
  * startM: starting index for the thread
  * endM: end index for the thread
+ * data: pointer to list of points
+ * clusterAssignments: pointer to list of cluster assignment (for each point)
+ * clusterCentroids: pointer to list of cluster centroids 
+ * N: dimension of the points 
+ * start: start number of centroids 
+ * end: end number of centroids
  */
 typedef struct {
   double *data;
@@ -87,7 +93,14 @@ typedef struct {
   int numThreads;
 } HelperArgs;
 
-// helper function for each thread
+
+/**
+ * Helper function called for each thread. 
+ * Each thread is responsible for computing the new cluster assignments for a chunk of points (from startM to endM), 
+ * computing the distance between each point and each (out of k) centroids, and updating clusterAssignments appropriately. 
+ * 
+ * It is called by computeAssignments, which assigns m / num_threads points to each thread. 
+ */
 void workerThread(HelperArgs *const thread_args) {
 
     for (int m = thread_args->startM; m < thread_args->endM; m++) {

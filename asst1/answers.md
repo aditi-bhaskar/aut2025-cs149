@@ -58,7 +58,7 @@ the values for 8 pixels could be computed at once.
 
 However, we do not get the maximum speedup, most likely due to different number of iterations of the for loop in the `mandel()` 
 function for different elements in each gang. We know that all elements in the 8-wide vector need to execute to completion, which means 
-each execution is bottlenecked by the slowest element (before the next gang can be computed). 
+each execution is bottlenecked by the slowest element. 
 
 We can confirm this with the difference between image 1 and 2 --- there is more of a speedup with view 1, likely because there are more 
 chunks of consecutive pixels that have similar values (num. of loops in `mandel()`), versus in view 2, the densities are more spread out and
@@ -69,7 +69,7 @@ of loops in `mandel()`.)
 
 ### Part 2
 1. The speedup is 9.87x using task ISPC, which was 1.95x speedup over the version without tasks. 
-2. The mandelbrot image does not take the same energy to generate each of its subsections, and ISPC can load the next task as soon as the current task is complete. While the CPU can only handle 8 tasks concurrently, dividing the image into more than 8 tasks may be optimal in the (extreme) case that one of the tasks gets the brightest part of the image, and the rest of the tasks get completely dark sections.
+2. The mandelbrot image does not take the same amount of computation to generate each of its subsections, and ISPC can load the next task as soon as the current task is complete. While the CPU can only handle 8 tasks concurrently, dividing the image into more than 8 tasks may be optimal in the (extreme) case that one of the tasks gets the brightest part of the image, and the rest of the tasks get completely dark sections.
 
 To test this, we run task ISPC on the following numbers of tasks (see table below) for numbers of tasks above 8, and find that 20 tasks achieves over 32x speedup over the sequential version. Increasing the number of tasks beyond 20 allows for more granular distribution of the task, but does not increase the speedup notably. 
 
@@ -85,8 +85,6 @@ To test this, we run task ISPC on the following numbers of tasks (see table belo
 |     50      |      33.66x  |
 |     100     |      33.92x  | 
 |     200     |      34.45x  |
-
- ** TODO check in office hours if the answer to this is rigorous enough
 
 
 #### Extra Credit: 
@@ -105,14 +103,13 @@ The speedup due to multi-core parallelization 7.24x.
 The resulting speedup is 6.83x from ISPC, and 46.66x from task ISPC. 
 The modification improves SIMD speedup. This is because every number will require lots of iterations to converge, but 
 every element in the vector would require the same (large) number of iterations, and they would converge at once. 
-There is not much of a speedup for multi-core (which is 46.66/6.83 = 6.83 compared to 7.24) because **[ TODO ]**
+There is not much of a speedup for multi-core (which is 46.66/6.83 = 6.83x speedup compared to 7.24x from before).
+This is just because the input we chose was a SIMD speedup booster (by setting all the elements to the same) but not exactly a multi-core
+booster, so we see similar speedups using multiple cores as before. 
 
-3. The input we choose is if all the elements in values is 1, except every 8th element is 2.99999. The resulting speedup is 0.91x from ISPC (over sequential) and 6.25x  from task ISPC (over sequential). We chose this input if we add a longer iteration number every 8th element, this forces the ISPC vector to take additional iterations
+4. The input we choose is if all the elements in values is 1, except every 8th element is `2.99999`. The resulting speedup is 0.91x from ISPC (over sequential) and 6.25x  from task ISPC (over sequential). We chose this input if we add a longer iteration number every 8th element, this forces the ISPC vector to take additional iterations
 for all the other elements which are not necessary, and in the sequential implementation, those other elements would converge very 
 quickly so there is not much of a difference.
-
-<!-- except every 8th element is `2.78`. (**TODO: which we tuned?**)
-The resulting speedup is 0.84x from ISPC, and 5.09x from task ISPC. -->
 
 ## Program 5
 
@@ -128,17 +125,9 @@ We believe that this is due to the program mostly being memory bottlenecked: The
 multiplication and addition) but would require moving two 20M-element vectors (along with the result vector). (This is similar to 
 an example discussed in class.) 
 
-Regardless of how the computation is parallelized, we cannot speed up the memory bandwidth, which we believe accounts for the majority 
+Regardless of how the computation is parallelized, we cannot speed up the memory movement, which we believe accounts for the majority 
 of the time of the program, so we do not think it can be substantially improved. 
 
-(remove) One experiment we tried was to setting `result[i] = 0` in both `saxpy_ispc` and `saxpy_ispc_task` (instead of actually running the 
-scalar multiplication and addition). This would require doing the same amount of memory movement 
-
-Our other hypothesis is that the ISPC implementation is already parallelized using threads. We tried changing the number of tasks from 
-64 to 1, and found there was no speedup. This suggests that because of the `foreach` loops, each thread is already being used at high 
-capacity. 
-
-TODO: we should check
 
 ## Program 6
 

@@ -71,6 +71,8 @@ typedef struct {
   int *clusterAssignments;
   double *minDist;
   int localM;
+  int startM;
+  int endM;
   double *clusterCentroids;
   int N;
   int start;
@@ -83,11 +85,11 @@ typedef struct {
 // helper function for each thread
 void workerThread(HelperArgs *const thread_args) {
 
-    for (int m = 0; m < thread_args->localM; m++) {
+    for (int m = thread_args->startM; m < thread_args->endM; m++) {
       
       // store arr to reduce overhead of having to reload it everytime to update it
-      double localMinDist = thread_args->minDist[m];
-      int localClusterAssignment = thread_args->clusterAssignments[m];
+      double localMinDist = 1e30; // thread_args->minDist[m];
+      int localClusterAssignment = -1; // thread_args->clusterAssignments[m];
 
       for (int k = thread_args->start; k < thread_args->end; k++) { // k in [0, 3)
 
@@ -102,7 +104,7 @@ void workerThread(HelperArgs *const thread_args) {
           }
       }
 
-      thread_args->minDist[m] = localMinDist;
+      // thread_args->minDist[m] = localMinDist;
       thread_args->clusterAssignments[m] = localClusterAssignment;
     }
 
@@ -116,7 +118,7 @@ void computeAssignments(WorkerArgs *const args) {
   
   // Initialize arrays
   for (int m =0; m < args->M; m++) {
-    minDist[m] = 1e30;
+    // minDist[m] = 1e30;
     args->clusterAssignments[m] = -1;
   }
 
@@ -132,10 +134,14 @@ void computeAssignments(WorkerArgs *const args) {
     // set up the threads
     for (int i=0; i<numThreads; i++) {
 
-          helper_args[i].data = &args->data[args->M  * i / numThreads];
-          helper_args[i].clusterAssignments = &args->clusterAssignments[args->M * i / numThreads];
-          helper_args[i].minDist = &minDist[args->M * i / numThreads];
+          helper_args[i].data = &args->data[0]; // &args->data[args->M  * i / numThreads];
+          helper_args[i].clusterAssignments = &args->clusterAssignments[0]; // &args->clusterAssignments[args->M * i / numThreads];
+          // helper_args[i].minDist = &minDist[args->M * i / numThreads];
           helper_args[i].localM = args->M / numThreads; 
+
+          helper_args[i].startM = i * args->M / numThreads; 
+          helper_args[i].endM = (i + 1) * args->M / numThreads; 
+
           helper_args[i].clusterCentroids = args->clusterCentroids;
 
           helper_args[i].N = args->N;

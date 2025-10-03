@@ -142,8 +142,10 @@ TODO: we should check
 
 ## Program 6
 
+The baseline time is 9035.795 ms. 
+
 First, we timed the average number of seconds that each of the functions `computeAssignments()`, `computeCentroids()`, and `computeCost()` took in 
-iterations of the loop. 
+iterations of the loop (ms). 
 
 `computeAssignments: 0.301481`
 
@@ -153,15 +155,20 @@ iterations of the loop.
 
 We see that most of the time being spent in the code is in `computeAssignments()`, which is where we decided to focus our speedup. 
 
+We thought about how we wanted to parallelize the work for `computeAssignments()`. We know that the function requires computing the distance between 
+every point and every centroid (e.g. `k * m` calls to distance). This meant we could parallelize across either `k` or `m` axis (or both). 
 
-After some modifications: (not enough optimizing!)
+What we tried first was to keep `k` outside of the thread helper function, 
+while splitting the `m` points across the threads. This meant each thread was computing distances for `m / num_threads` points for a single
+centroid. We implemented this, and the running time was 5632.206 ms, which is 1.60x speedup. 
 
-`assign_comp: 0.0510605`
+Then we thought about the current accesses to data for the `m` points. We realized that we would have three separate threads (for 3 centroids)
+computing distances for the same chunk of the `m` points, which would require multiple data access. The way our loop was set up also 
+meant that the data likely was kicked out of the cache the next time those `m / num_threads` points would be called (since it would loop over `k=0` for all `m` points first). 
 
-`centroids_comp: 0.0389844`
+So, we decided to try having each thread compute all distances for the chunk of `m / num_threads` points, 
+for all centroids, e.g. moving the loop over `k` to the inner loop in the thread helper function. 
+This meant that all access to those `m / num_threads` points would occur in the same function call and that data could be cached for that thread. 
 
-`cost_comp: 0.0703796`
-
-`[Total Time]: 5656.665 ms`
-
-TODO * Think about the order of the loops & which variable is the largest. Think about data reuse + caches when using k as outer loop and m as inner loop. data eviction; caches.
+After that modification, the running time was 3815.907, which is a **2.37x speedup**. 
+The new average time spent in `computeAssignments()` was `0.039122` ms, which is a major speedup. 

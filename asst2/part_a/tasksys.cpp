@@ -1,5 +1,8 @@
 #include "tasksys.h"
 #include <algorithm>
+#include <atomic>
+#include <iostream>
+#include <thread>
 
 IRunnable::~IRunnable() {}
 
@@ -55,7 +58,7 @@ TaskSystemParallelSpawn::TaskSystemParallelSpawn(int num_threads): ITaskSystem(n
     // Implementations are free to add new class member variables
     // (requiring changes to tasksys.h).
     //
-    cout << "TaskSystemParallelSpawn1" << endl;
+    // std::cout << "TaskSystemParallelSpawn1" << std::endl;
     n_threads = num_threads;
 }
 
@@ -73,15 +76,16 @@ void TaskSystemParallelSpawn::run(IRunnable* runnable, int num_total_tasks) {
     //     runnable->runTask(i, num_total_tasks);
     // }
 
-    cout << "TaskSystemParallelSpawn" << endl;
+    // std::cout << "TaskSystemParallelSpawn" << std::endl;
 
     int cur_task = 0; 
     std::thread workers[n_threads];
 
     while (cur_task < num_total_tasks) {
+        // std::cout << cur_task << std::endl;
 
         for (int j = 1; j < std::min(n_threads, num_total_tasks - cur_task); j++) {
-            workers[j] = std::thread(runnable->runTask, cur_task + j, num_total_tasks);
+            workers[j] = std::thread(&IRunnable::runTask, runnable, cur_task + j, num_total_tasks);
         }
 
         runnable->runTask(cur_task, num_total_tasks);
@@ -89,6 +93,8 @@ void TaskSystemParallelSpawn::run(IRunnable* runnable, int num_total_tasks) {
         for (int j=1; j< std::min(n_threads, num_total_tasks - cur_task); j++) {
             workers[j].join();
         }
+
+        cur_task += std::min(n_threads, num_total_tasks - cur_task);
     }
 
 }
@@ -114,22 +120,22 @@ const char* TaskSystemParallelThreadPoolSpinning::name() {
     return "Parallel + Thread Pool + Spin";
 }
 
-void TaskSystemParallelThreadPoolSpinning::spinRunThread() {
-    while(true) {
-        if (cur_task == -1) {
-            continue; 
-        }
-        if (cur_task == num_total_tasks - 1) {
-            num_threads_done++; 
-            while (cur_task != -1) { // while other threads are still running; or num_threads_done != n_threads
-                // nothing 
-            }
-            continue; 
-        }
-        cur_task += 1;
-        run_function->runTask(cur_task, num_total_tasks);
-    } 
-}
+// void TaskSystemParallelThreadPoolSpinning::spinRunThread() {
+//     // while(true) {
+//     //     if (cur_task == -1) {
+//     //         continue; 
+//     //     }
+//     //     if (cur_task == num_total_tasks - 1) {
+//     //         num_threads_done++; 
+//     //         while (cur_task != -1) { // while other threads are still running; or num_threads_done != n_threads
+//     //             // nothing 
+//     //         }
+//     //         continue; 
+//     //     }
+//     //     cur_task += 1;
+//     //     run_function->runTask(cur_task, num_total_tasks);
+//     // } 
+// }
 
 TaskSystemParallelThreadPoolSpinning::TaskSystemParallelThreadPoolSpinning(int num_threads): ITaskSystem(num_threads) {
     //
@@ -141,19 +147,19 @@ TaskSystemParallelThreadPoolSpinning::TaskSystemParallelThreadPoolSpinning(int n
 
     // std::thread workers[num_threads];
 
-    n_threads = num_threads; 
-    workers = new std::thread[num_threads];
+    // n_threads = num_threads; 
+    // workers = new std::thread[num_threads];
 
-    for (int j = 1; j < n_threads; j++) {
-        workers[j] = std::thread(spinRunThread);
-    }
+    // for (int j = 1; j < n_threads; j++) {
+    //     workers[j] = std::thread(spinRunThread);
+    // }
     
 }
 
 TaskSystemParallelThreadPoolSpinning::~TaskSystemParallelThreadPoolSpinning() {
-    for (int j=1; j< n_threads; j++) {
-        workers[j].join();
-    }
+    // for (int j=1; j< n_threads; j++) {
+    //     workers[j].join();
+    // }
 }
 
 void TaskSystemParallelThreadPoolSpinning::run(IRunnable* runnable, int num_total_tasks) {
@@ -164,12 +170,12 @@ void TaskSystemParallelThreadPoolSpinning::run(IRunnable* runnable, int num_tota
     // tasks sequentially on the calling thread.
     //
 
-    num_threads_done = 0; 
-    cur_task = 0; 
-    while (num_threads_done != num_threads) {
-        // nothing; spin 
-    }
-    cur_task = -1; 
+    // num_threads_done = 0; 
+    // cur_task = 0; 
+    // while (num_threads_done != num_threads) {
+    //     // nothing; spin 
+    // }
+    // cur_task = -1; 
 }
 
 TaskID TaskSystemParallelThreadPoolSpinning::runAsyncWithDeps(IRunnable* runnable, int num_total_tasks,

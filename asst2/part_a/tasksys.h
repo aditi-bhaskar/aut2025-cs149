@@ -2,6 +2,8 @@
 #define _TASKSYS_H
 
 #include "itasksys.h"
+#include <atomic>
+#include <thread>
 
 /*
  * TaskSystemSerial: This class is the student's implementation of a
@@ -56,8 +58,8 @@ class TaskSystemParallelThreadPoolSpinning: public ITaskSystem {
     private:
         int n_threads; 
         int num_total_tasks = 0; 
-        std::atomic<int> cur_task = -1; // -1 means threads spinning 
-        std::atomic<int> num_threads_done = 0; 
+        std::atomic<int> cur_task{-1}; // -1 means threads spinning 
+        std::atomic<int> num_threads_done{0}; 
         std::thread* workers;
         IRunnable* run_function; 
 };

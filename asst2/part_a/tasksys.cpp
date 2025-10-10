@@ -64,6 +64,12 @@ TaskSystemParallelSpawn::TaskSystemParallelSpawn(int num_threads): ITaskSystem(n
 
 TaskSystemParallelSpawn::~TaskSystemParallelSpawn() {}
 
+void TaskSystemParallelSpawn::workerHelper(IRunnable* runnable, int num_total_tasks, int thread_id) {
+    for(int i = thread_id; i < num_total_tasks; i += n_threads) {
+        runnable->runTask(i, num_total_tasks); 
+    }
+} 
+
 void TaskSystemParallelSpawn::run(IRunnable* runnable, int num_total_tasks) {
 
     //
@@ -78,24 +84,35 @@ void TaskSystemParallelSpawn::run(IRunnable* runnable, int num_total_tasks) {
 
     // std::cout << "TaskSystemParallelSpawn" << std::endl;
 
-    int cur_task = 0; 
     std::thread workers[n_threads];
 
-    while (cur_task < num_total_tasks) {
-        // std::cout << cur_task << std::endl;
-
-        for (int j = 1; j < std::min(n_threads, num_total_tasks - cur_task); j++) {
-            workers[j] = std::thread(&IRunnable::runTask, runnable, cur_task + j, num_total_tasks);
-        }
-
-        runnable->runTask(cur_task, num_total_tasks);
-
-        for (int j=1; j< std::min(n_threads, num_total_tasks - cur_task); j++) {
-            workers[j].join();
-        }
-
-        cur_task += std::min(n_threads, num_total_tasks - cur_task);
+    for (int j = 1; j < n_threads; j++) {
+        workers[j] = std::thread(&TaskSystemParallelSpawn::workerHelper, this, runnable, num_total_tasks, j);
     }
+    workerHelper(runnable, num_total_tasks, 0); 
+
+    for (int j=1; j< n_threads; j++) {
+        workers[j].join();
+    }
+
+    // int cur_task = 0; 
+    // std::thread workers[n_threads];
+
+    // while (cur_task < num_total_tasks) {
+    //     // std::cout << cur_task << std::endl;
+
+    //     for (int j = 1; j < std::min(n_threads, num_total_tasks - cur_task); j++) {
+    //         workers[j] = std::thread(&IRunnable::runTask, runnable, cur_task + j, num_total_tasks);
+    //     }
+
+    //     runnable->runTask(cur_task, num_total_tasks);
+
+    //     for (int j=1; j< std::min(n_threads, num_total_tasks - cur_task); j++) {
+    //         workers[j].join();
+    //     }
+
+    //     cur_task += std::min(n_threads, num_total_tasks - cur_task);
+    // }
 
 }
 
@@ -169,6 +186,10 @@ void TaskSystemParallelThreadPoolSpinning::run(IRunnable* runnable, int num_tota
     // method in Part A.  The implementation provided below runs all
     // tasks sequentially on the calling thread.
     //
+
+    for (int i = 0; i < num_total_tasks; i++) {
+        runnable->runTask(i, num_total_tasks);
+    }
 
     // num_threads_done = 0; 
     // cur_task = 0; 

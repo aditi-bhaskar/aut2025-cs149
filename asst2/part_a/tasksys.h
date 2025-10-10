@@ -34,6 +34,8 @@ class TaskSystemParallelSpawn: public ITaskSystem {
         TaskID runAsyncWithDeps(IRunnable* runnable, int num_total_tasks,
                                 const std::vector<TaskID>& deps);
         void sync();
+    private:
+        int n_threads; 
 };
 
 /*
@@ -51,6 +53,13 @@ class TaskSystemParallelThreadPoolSpinning: public ITaskSystem {
         TaskID runAsyncWithDeps(IRunnable* runnable, int num_total_tasks,
                                 const std::vector<TaskID>& deps);
         void sync();
+    private:
+        int n_threads; 
+        int num_total_tasks = 0; 
+        std::atomic<int> cur_task = -1; // -1 means threads spinning 
+        std::atomic<int> num_threads_done = 0; 
+        std::thread* workers;
+        IRunnable* run_function; 
 };
 
 /*

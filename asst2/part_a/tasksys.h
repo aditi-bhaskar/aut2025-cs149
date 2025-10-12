@@ -63,6 +63,9 @@ class TaskSystemParallelThreadPoolSpinning: public ITaskSystem {
         int num_total_tasks = 0; 
         std::atomic<int> cur_task{-1}; // -1 means threads spinning 
         std::atomic<int> num_threads_done{0}; 
+
+        std::atomic<bool> kill_threads{false}; 
+
         std::thread* workers;
         IRunnable* run_function; 
 

@@ -116,36 +116,47 @@ const char* TaskSystemParallelThreadPoolSpinning::name() {
 
 void TaskSystemParallelThreadPoolSpinning::spinRunThread(int thread_id) {
     while(true) {
-        if (cur_task == -1) {
+
+        int my_task = cur_task;
+
+        // std::cout << cur_task << std::endl;
+
+        if (kill_threads) {
+            // std::cout << "kill_threads" << " " << num_threads_done << " " << thread_id << std::endl;
+            num_threads_done++; 
+            return; 
+        }
+    
+        if (my_task == -1) {
             // std::cout << "120 " << num_threads_done << std::endl;
             // num_threads_done = 0; 
             continue; 
         }
+
+
         myMutex.lock(); 
-        int my_task = cur_task; 
+        my_task = cur_task; 
 
         if (my_task >= num_total_tasks) {
             myMutex.unlock(); 
             num_threads_done += 1; 
-            std::cout << num_threads_done << std::endl;
-            while (cur_task != -1) {
-                myMutex.lock();
-                // std::cout << "129" << " " << cur_task << " " << my_task << " " << num_total_tasks << " " << num_threads_done <<  std::endl;
-                myMutex.unlock();
+            // std::cout << num_threads_done << std::endl;
+            while (cur_task.load() != -1) {
+
             }
             num_threads_done--; 
             continue; 
         }
 
-        std::cout << "135" << " " << my_task << " " << cur_task << std::endl;
+        // std::cout << "135" << " " << my_task << " " << cur_task << std::endl;
 
         cur_task += 1; 
-
         myMutex.unlock(); 
 
         run_function->runTask(my_task, num_total_tasks);
     }
 }
+
 
 TaskSystemParallelThreadPoolSpinning::TaskSystemParallelThreadPoolSpinning(int num_threads): ITaskSystem(num_threads) {
     //
@@ -161,13 +172,21 @@ TaskSystemParallelThreadPoolSpinning::TaskSystemParallelThreadPoolSpinning(int n
     workers = new std::thread[num_threads];
 
     for (int j = 1; j < n_threads; j++) {
-        std::cout << "starting thread " << j << std::endl;
+        // std::cout << "starting thread " << j << std::endl;
         workers[j] = std::thread(&TaskSystemParallelThreadPoolSpinning::spinRunThread, this, j);
     }
     
 }
 
 TaskSystemParallelThreadPoolSpinning::~TaskSystemParallelThreadPoolSpinning() {
+
+    // std::cout << "destructor" << std::endl; 
+
+    kill_threads = true; 
+    while (num_threads_done != n_threads - 1) {
+        // std::cout << "185" << num_threads_done << " " << n_threads << std::endl;
+    }
+
     for (int j=1; j< n_threads; j++) {
         workers[j].join();
     }
@@ -181,21 +200,28 @@ void TaskSystemParallelThreadPoolSpinning::run(IRunnable* runnable, int n_total_
     // tasks sequentially on the calling thread.
     //
 
+    // std::cout << "new run" << std::endl; 
+
     run_function = runnable; 
 
     num_threads_done = 0; 
     num_total_tasks = n_total_tasks; 
 
+    myMutex.lock();
     cur_task = 0; 
+    myMutex.unlock();
     
 
     while(num_threads_done < n_threads - 1) {
         // std::cout << "183" << std::endl;
     }
 
+    myMutex.lock();
     cur_task = -1; 
+    myMutex.unlock();
+
     while (num_threads_done > 0) {
-        std::cout << "188" << " " << num_threads_done << std::endl;
+        // std::cout << "188" << " " << num_threads_done << std::endl;
     }
     num_threads_done = 0; 
 

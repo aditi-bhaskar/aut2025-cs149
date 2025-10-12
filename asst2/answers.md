@@ -14,3 +14,6 @@ TODO based on part b!
 
 #### Describe one test that you implemented for this assignment. What does the test do, what is it meant to check, and how did you verify that your solution to the assignment did well on your test? Did the result of the test you added cause you to change your assignment implementation?
 
+The test adds 1 to 10000 array elements, and batches this into tasks of size 1-element with a small sleep, except for one task which processes a large chunk of the elements. We see that the parallelized task pool implementation does much better.
+
+TODO elaborate + add picture

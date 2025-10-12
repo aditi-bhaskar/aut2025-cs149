@@ -5,6 +5,7 @@
 #include <atomic>
 #include <thread>
 #include <mutex>
+#include <condition_variable>
 
 /*
  * TaskSystemSerial: This class is the student's implementation of a
@@ -70,7 +71,6 @@ class TaskSystemParallelThreadPoolSpinning: public ITaskSystem {
         IRunnable* run_function; 
 
         std::mutex myMutex;
-        // std::lock_guard<std::mutex> lock(myMutex); 
 };
 
 /*
@@ -88,6 +88,24 @@ class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
         TaskID runAsyncWithDeps(IRunnable* runnable, int num_total_tasks,
                                 const std::vector<TaskID>& deps);
         void sync();
+        void sleepRunThread(int thread_id);
+    private:
+        int n_threads; 
+        int num_total_tasks = 0; 
+        std::atomic<int> cur_task{-1}; // -1 means threads spinning 
+        std::atomic<int> num_threads_done{0}; 
+
+        std::atomic<bool> kill_threads{false}; 
+
+        std::thread* workers;
+        IRunnable* run_function; 
+
+        std::mutex myMutex;
+        std::mutex myMutex2;
+
+        std::condition_variable cv;
+        std::condition_variable cv2;
+        // std::unique_lock<std::mutex> lk(myMutex);
 };
 
 #endif

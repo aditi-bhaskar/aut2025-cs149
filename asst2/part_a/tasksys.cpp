@@ -5,6 +5,7 @@
 #include <thread>
 #include <mutex>
 #include <unistd.h>
+#include <condition_variable>
 
 IRunnable::~IRunnable() {}
 
@@ -117,8 +118,6 @@ const char* TaskSystemParallelThreadPoolSpinning::name() {
 void TaskSystemParallelThreadPoolSpinning::spinRunThread(int thread_id) {
     while(true) {
 
-        int my_task = cur_task;
-
         // std::cout << cur_task << std::endl;
 
         if (kill_threads) {
@@ -127,7 +126,7 @@ void TaskSystemParallelThreadPoolSpinning::spinRunThread(int thread_id) {
             return; 
         }
     
-        if (my_task == -1) {
+        if (cur_task == -1) {
             // std::cout << "120 " << num_threads_done << std::endl;
             // num_threads_done = 0; 
             continue; 
@@ -135,7 +134,7 @@ void TaskSystemParallelThreadPoolSpinning::spinRunThread(int thread_id) {
 
 
         myMutex.lock(); 
-        my_task = cur_task; 
+        int my_task = cur_task; 
 
         if (my_task >= num_total_tasks) {
             myMutex.unlock(); 
@@ -248,6 +247,86 @@ const char* TaskSystemParallelThreadPoolSleeping::name() {
     return "Parallel + Thread Pool + Sleep";
 }
 
+
+void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
+
+    while(true) {
+
+        // myMutex.lock(); 
+        std::unique_lock<std::mutex> lk(myMutex);
+
+        while (cur_task == -1) {
+            // std::cout << "259 " << num_threads_done << std::endl;
+            // if (kill_threads) {
+            //     lk.unlock();
+            //     std::cout << "263 " << num_threads_done << std::endl;
+            //     num_threads_done++; 
+            //     return; 
+            // }
+            cv.wait(lk); 
+            // std::cout << "261" << std::endl;
+            if (kill_threads) {
+                lk.unlock();
+                // std::cout << "263 " << num_threads_done << std::endl;
+                num_threads_done++; 
+                return; 
+            }
+        }
+
+        // std::cout << "here" << std::endl;
+
+        int my_task = cur_task; 
+
+        // std::cout << "271 " << my_task << std::endl;
+
+        if (my_task >= num_total_tasks) {
+            lk.unlock(); 
+            num_threads_done += 1; 
+            // std::cout << num_threads_done << std::endl;
+            while (cur_task.load() != -1) {
+
+            }
+            num_threads_done--; 
+            continue; 
+        }
+
+        // if (my_task >= num_total_tasks) {
+        //     lk.unlock(); 
+        //     num_threads_done += 1; 
+
+        //     std::unique_lock<std::mutex> lk2(myMutex2);
+
+        //     // if (num_threads_done == n_threads - 2) {
+        //     //     lk2.unlock(); 
+        //     //     cv2.notify_all(); 
+        //     //     std::cout << "notify" << std::endl;
+        //     //     std::cout << num_threads_done << " " << n_threads << std::endl;
+        //     // } else {
+        //     //     std::cout << num_threads_done << " " << n_threads << std::endl;
+        //     //     cv2.wait(lk2); 
+        //     //     lk2.unlock(); 
+        //     // }
+
+        //     // std::cout << num_threads_done << " " << n_threads << std::endl;
+        //     // cv2.wait(lk2); 
+            
+            
+        //     // num_threads_done--; 
+        //     // std::cout << "291 " << num_threads_done << " " << cur_task << std::endl;
+
+        //     // lk2.unlock(); 
+
+        //     continue; 
+        // }
+
+        cur_task += 1; 
+        lk.unlock(); 
+
+        run_function->runTask(my_task, num_total_tasks);
+    }
+}
+
+
 TaskSystemParallelThreadPoolSleeping::TaskSystemParallelThreadPoolSleeping(int num_threads): ITaskSystem(num_threads) {
     //
     // TODO: CS149 student implementations may decide to perform setup
@@ -255,29 +334,75 @@ TaskSystemParallelThreadPoolSleeping::TaskSystemParallelThreadPoolSleeping(int n
     // Implementations are free to add new class member variables
     // (requiring changes to tasksys.h).
     //
+
+    // std::thread workers[num_threads];
+
+    n_threads = num_threads; 
+    workers = new std::thread[num_threads];
+
+    for (int j = 1; j < n_threads; j++) {
+        workers[j] = std::thread(&TaskSystemParallelThreadPoolSleeping::sleepRunThread, this, j);
+    }
+    
 }
 
 TaskSystemParallelThreadPoolSleeping::~TaskSystemParallelThreadPoolSleeping() {
-    //
-    // TODO: CS149 student implementations may decide to perform cleanup
-    // operations (such as thread pool shutdown construction) here.
-    // Implementations are free to add new class member variables
-    // (requiring changes to tasksys.h).
-    //
+
+    // std::cout << "destructor" << std::endl;
+
+    kill_threads = true; 
+    cv.notify_all();
+    // std::cout << "349 notify" << std::endl;
+    while (num_threads_done != n_threads - 1) {
+        cv.notify_all();
+        // std::cout << "347 " << num_threads_done << " " << cur_task << std::endl;
+    }
+
+    for (int j=1; j< n_threads; j++) {
+        workers[j].join();
+    }
 }
 
-void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int num_total_tasks) {
-
+void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int n_total_tasks) {
 
     //
     // TODO: CS149 students will modify the implementation of this
-    // method in Parts A and B.  The implementation provided below runs all
+    // method in Part A.  The implementation provided below runs all
     // tasks sequentially on the calling thread.
     //
 
-    for (int i = 0; i < num_total_tasks; i++) {
-        runnable->runTask(i, num_total_tasks);
+    // std::cout << "new run" << std::endl; 
+
+    run_function = runnable; 
+
+    num_threads_done = 0; 
+    num_total_tasks = n_total_tasks; 
+
+    myMutex.lock();
+    cur_task = 0; 
+    cv.notify_all(); 
+    myMutex.unlock();
+    
+
+    while(num_threads_done < n_threads - 1) {
     }
+    // std::cout << "365 " << num_threads_done << std::endl;
+    
+
+    myMutex.lock();
+    cur_task = -1; 
+    myMutex.unlock();
+
+    // cv2.notify_all();
+    // std::cout << "cv2 notify" << std::endl;
+
+    while (num_threads_done > 0) {
+        // std::cout << "367 " << num_threads_done << std::endl;
+    }
+    num_threads_done = 0; 
+
+    // std::cout << "exit run" << std::endl;
+
 }
 
 TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnable, int num_total_tasks,

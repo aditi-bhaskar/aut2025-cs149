@@ -371,8 +371,6 @@ void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int n_total_
     // tasks sequentially on the calling thread.
     //
 
-    // std::cout << "new run" << std::endl; 
-
     run_function = runnable; 
 
     num_threads_done = 0; 
@@ -386,8 +384,6 @@ void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int n_total_
 
     while(num_threads_done < n_threads - 1) {
     }
-    // std::cout << "365 " << num_threads_done << std::endl;
-    
 
     myMutex.lock();
     cur_task = -1; 
@@ -397,11 +393,8 @@ void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int n_total_
     // std::cout << "cv2 notify" << std::endl;
 
     while (num_threads_done > 0) {
-        // std::cout << "367 " << num_threads_done << std::endl;
     }
     num_threads_done = 0; 
-
-    // std::cout << "exit run" << std::endl;
 
 }
 

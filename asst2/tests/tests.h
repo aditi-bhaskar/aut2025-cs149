@@ -6,6 +6,8 @@
 #include <thread>
 #include <atomic>
 #include <set>
+#include <iostream>
+#include <unistd.h>
 
 #include "CycleTimer.h"
 #include "itasksys.h"
@@ -59,33 +61,83 @@ typedef struct {
 */
 /*
  * Implement your task here
+ * Lots from simpleTest
 */
+
 class YourTask : public IRunnable {
     public:
-        YourTask() {}
+        int num_elements_;
+        int* array_;
+
+        YourTask(int num_elements, int* array)
+            : num_elements_(num_elements), array_(array) {}
         ~YourTask() {}
-        void runTask(int task_id, int num_total_tasks) {}
+
+        static inline int multiply_task(int iters, int input) {
+            int accumulator = 1;
+            for (int i = 0; i < iters; ++i) {
+                accumulator *= input;
+            }
+            return accumulator;
+        }
+
+        void runTask(int task_id, int num_total_tasks) {
+            // handle case where num_elements is not evenly divisible by num_total_tasks
+            // int elements_per_task = (num_elements_ + num_total_tasks-1) / num_total_tasks;
+            // int start_el = elements_per_task * task_id;
+            // int end_el = std::min(start_el + elements_per_task, num_elements_);
+
+            int start_el = 0; 
+            int end_el = 0; 
+
+            // std::cout << num_elements_ << " " << num_total_tasks << std::endl;
+
+            if (task_id == 0) {
+                start_el = 0; 
+                end_el = num_elements_ - num_total_tasks + 1; 
+                // std::cout << task_id << " " << start_el << " " << end_el << std::endl;
+            } else {
+                start_el = task_id + num_elements_ - num_total_tasks;
+                end_el = std::min(start_el + 1, num_elements_);  
+                // std::cout << task_id << " " << start_el << " " << end_el << std::endl;
+            }
+
+            for (int i=start_el; i<end_el; i++) {
+                array_[i] = multiply_task(3, array_[i]);
+                sleep(0.0000001);
+            }
+        }
 };
+
 /*
  * Implement your test here. Call this function from a wrapper that passes in
  * do_async and num_elements. See `simpleTest`, `simpleTestSync`, and
  * `simpleTestAsync` as an example.
  */
 TestResults yourTest(ITaskSystem* t, bool do_async, int num_elements, int num_bulk_task_launches) {
-    // TODO: initialize your input and output buffers
-    int* output = new int[num_elements];
+    int num_tasks = 9000;
 
-    // TODO: instantiate your bulk task launches
+    int* array = new int[num_elements];
+
+    for (int i=0; i<num_elements; i++) {
+        array[i] = 1; // i + 1;
+    }
+
+    YourTask first = YourTask(num_elements, array);
+    YourTask second = YourTask(num_elements, array);
 
     // Run the test
     double start_time = CycleTimer::currentSeconds();
     if (do_async) {
-        // TODO:
-        // initialize dependency vector
-        // make calls to t->runAsyncWithDeps and push TaskID to dependency vector
-        // t->sync() at end
+        std::vector<TaskID> firstDeps;
+        TaskID first_task_id = t->runAsyncWithDeps(&first, num_tasks, firstDeps);
+        std::vector<TaskID> secondDeps;
+        secondDeps.push_back(first_task_id);
+        t->runAsyncWithDeps(&second, num_tasks, secondDeps);
+        t->sync();
     } else {
-        // TODO: make calls to t->run
+        t->run(&first, num_tasks);
+        t->run(&second, num_tasks);
     }
     double end_time = CycleTimer::currentSeconds();
 
@@ -94,24 +146,37 @@ TestResults yourTest(ITaskSystem* t, bool do_async, int num_elements, int num_bu
     results.passed = true;
 
     for (int i=0; i<num_elements; i++) {
-        int value = 0; // TODO: initialize value
-        for (int j=0; j<num_bulk_task_launches; j++) {
-            // TODO: update value as expected
-        }
+        int value = 1; // i+1;
+
+        for (int j=0; j<num_bulk_task_launches; j++)
+            value = YourTask::multiply_task(3, value);
 
         int expected = value;
-        if (output[i] != expected) {
+        if (array[i] != expected) {
             results.passed = false;
-            printf("%d: %d expected=%d\n", i, output[i], expected);
+            printf("%d: %d expected=%d\n", i, array[i], expected);
             break;
         }
     }
     results.time = end_time - start_time;
 
-    delete [] output;
+    delete [] array;
 
     return results;
 }
+
+TestResults yourTestSync(ITaskSystem* t) {
+    int num_elements = 10000;  
+    int num_bulk_task_launches = 2;
+    return yourTest(t, false, num_elements, num_bulk_task_launches);
+}
+
+TestResults yourTestAsync(ITaskSystem* t) {
+    int num_elements = 10000;  
+    int num_bulk_task_launches = 2;
+    return yourTest(t, true, num_elements, num_bulk_task_launches);
+}
+
 
 /*
  * ==================================================================

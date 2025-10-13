@@ -1,6 +1,7 @@
 #include "tasksys.h"
 #include <iostream>
 #include <algorithm>
+#include <unistd.h>
 
 IRunnable::~IRunnable() {}
 
@@ -141,6 +142,8 @@ TaskSystemParallelThreadPoolSleeping::TaskSystemParallelThreadPoolSleeping(int n
 
 TaskSystemParallelThreadPoolSleeping::~TaskSystemParallelThreadPoolSleeping() {
 
+    std::cout << "destructor " << std::endl;
+
     this->sync();
 
     kill_threads = true; 
@@ -217,6 +220,8 @@ void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int num_tota
 // this function is inside a mutex (is called from rebalance running)
 void TaskSystemParallelThreadPoolSleeping::grabNewLaunch(void) {
 
+    // std::cout << "grabNewLaunch " << std::endl;
+
     if (ready_to_run.empty()) {
         processing_tasks = false; // there are currrently no tasks to process
     }
@@ -235,6 +240,10 @@ void TaskSystemParallelThreadPoolSleeping::grabNewLaunch(void) {
 
 void TaskSystemParallelThreadPoolSleeping::rebalanceRunning(void) {
 
+    myMutex.lock(); // make sure there is no contention in grabbing the next launch
+
+    // std::cout << "rebalanceRunning " << std::endl;
+    std::vector<TaskID> entries_to_erase{};
     for(const auto& pair : launches_with_dep) {
         bool dep_ok_to_run = true;
         for(const auto& dep : pair.second->dependencies) {
@@ -244,15 +253,23 @@ void TaskSystemParallelThreadPoolSleeping::rebalanceRunning(void) {
             }
         }
         if (dep_ok_to_run) {
-           ready_to_run[pair.first] = pair.second;
+            std::cout << "another dependency ready to run! " << pair.first << std::endl;
+            ready_to_run[pair.first] = pair.second; // add entry into ready list
+            entries_to_erase.push_back(pair.first);
         }
     }
 
-    myMutex.lock(); // make sure there is no contention in grabbing the next launch
+    while(!entries_to_erase.empty()) {
+        launches_with_dep.erase(entries_to_erase.back()); // remove entry from launches list
+        entries_to_erase.pop_back();
+    }
+
+    // myMutex.lock(); // make sure there is no contention in grabbing the next launch
     if (processing_tasks == false) {
         this->grabNewLaunch();
         cv.notify_all();
     }
+
     myMutex.unlock();
 }
 
@@ -277,7 +294,12 @@ TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnabl
 void TaskSystemParallelThreadPoolSleeping::sync() {
 
     // TODO use a CV for this instead of spinning!
-    while(!(launches_with_dep.empty() && ready_to_run.empty())) {}
+    while(!(launches_with_dep.empty() && ready_to_run.empty())) {
+        std::cout << "launches_with_dep " << launches_with_dep.size() << std::endl;
+        std::cout << "ready_to_run " << ready_to_run.size() << std::endl;
+        sleep(1);
+    }
+
 
     return;
 }

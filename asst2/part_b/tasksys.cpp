@@ -137,7 +137,6 @@ TaskSystemParallelThreadPoolSleeping::TaskSystemParallelThreadPoolSleeping(int n
         workers[j] = std::thread(&TaskSystemParallelThreadPoolSleeping::sleepRunThread, this, j);
     }
 
-
 }
 
 TaskSystemParallelThreadPoolSleeping::~TaskSystemParallelThreadPoolSleeping() {
@@ -156,26 +155,19 @@ TaskSystemParallelThreadPoolSleeping::~TaskSystemParallelThreadPoolSleeping() {
         workers[j].join();
     }
 
-    // todo should delete the structs allocated and stored in the list of readytorun at some point...
+    // todo: delete the structs allocated and stored in the list of readytorun at some point...
 
 }
 
 
 void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
 
-    // create the worker helper function here
-
-    // process curtask (like before)
-
-    // when we finish all the indices in a range, 
-    // pop off the task from ready_to_run, put it into done
-    // call rebalance ready_to_run list
-
     while(true) {
         std::unique_lock<std::mutex> lk(myMutex);
 
         while (!processing_tasks) {
             cv.wait(lk);
+            std::cout << "thread awake! " << thread_id << std::endl;
 
             if (kill_threads) {
                 lk.unlock();
@@ -190,6 +182,7 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
             lk.unlock(); 
             num_threads_done += 1; 
             if (num_threads_done == n_threads-1) {
+                std::cout << "setting processing_tasks to false " << std::endl;
                 processing_tasks = false;
             }
             while (processing_tasks) {
@@ -222,10 +215,11 @@ void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int num_tota
 // this function is inside a mutex (is called from rebalance running)
 void TaskSystemParallelThreadPoolSleeping::grabNewLaunch(void) {
 
-    // std::cout << "grabNewLaunch " << std::endl;
+    std::cout << "grabNewLaunch " << std::endl;
 
     if (ready_to_run.empty()) {
         processing_tasks = false; // there are currrently no tasks to process
+        return;
     }
 
     auto it = ready_to_run.begin();
@@ -238,16 +232,21 @@ void TaskSystemParallelThreadPoolSleeping::grabNewLaunch(void) {
     processing_tasks = true;
 
     ready_to_run.erase(it);
+
 }
 
 void TaskSystemParallelThreadPoolSleeping::rebalanceRunning(void) {
 
     myMutex.lock(); // make sure there is no contention in grabbing the next launch
 
-    // std::cout << "rebalanceRunning " << std::endl;
+    std::cout << "rebalanceRunning " << std::endl;
     std::vector<TaskID> entries_to_erase{};
+
+    std::cout << "len(launches_with_dep) " << launches_with_dep.size() << std::endl;
+
     for(const auto& pair : launches_with_dep) {
         bool dep_ok_to_run = true;
+        std::cout << "pair.first " << pair.first << std::endl;
         for(const auto& dep : pair.second->dependencies) {
             auto dep_in_done = std::find(done.begin(), done.end(), dep);
             if(dep_in_done == done.end()) {
@@ -264,6 +263,9 @@ void TaskSystemParallelThreadPoolSleeping::rebalanceRunning(void) {
     // erase launches that we have added to 'ready_to_run'
     while(!entries_to_erase.empty()) {
         std::cout << "erasing entry " << entries_to_erase.size() << std::endl;
+        // if (launches_with_dep.find(entries_to_erase.back()) == launches_with_dep.end()) {
+        //     std::cout << "entry not found, segfault cause found!!" << std::endl;
+        // } 
         launches_with_dep.erase(entries_to_erase.back()); // remove entry from launches list
         entries_to_erase.pop_back();
     }
@@ -300,8 +302,8 @@ void TaskSystemParallelThreadPoolSleeping::sync() {
     std::cout << "in sync " << std::endl;
     // TODO use a CV for this instead of spinning!
     while(!launches_with_dep.empty() || !ready_to_run.empty()) {
-        std::cout << "launches_with_dep " << launches_with_dep.size() << std::endl;
-        std::cout << "ready_to_run " << ready_to_run.size() << std::endl;
+        // std::cout << "launches_with_dep " << launches_with_dep.size() << std::endl;
+        // std::cout << "ready_to_run " << ready_to_run.size() << std::endl;
         // sleep(1);
     }
 

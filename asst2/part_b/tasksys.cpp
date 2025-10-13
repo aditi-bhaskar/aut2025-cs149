@@ -1,4 +1,5 @@
 #include "tasksys.h"
+#include <iostream>
 #include <algorithm>
 
 IRunnable::~IRunnable() {}
@@ -139,30 +140,25 @@ TaskSystemParallelThreadPoolSleeping::TaskSystemParallelThreadPoolSleeping(int n
 }
 
 TaskSystemParallelThreadPoolSleeping::~TaskSystemParallelThreadPoolSleeping() {
-    //
-    // TODO: CS149 student implementations may decide to perform cleanup
-    // operations (such as thread pool shutdown construction) here.
-    // Implementations are free to add new class member variables
-    // (requiring changes to tasksys.h).
-    //
 
-    // kill_threads = true; 
-    // cv.notify_all();
-    // // std::cout << "349 notify" << std::endl;
-    // while (num_threads_done != n_threads - 1) {
-    //     cv.notify_all();
-    //     // std::cout << "347 " << num_threads_done << " " << cur_task << std::endl;
-    // }
+    this->sync();
+
+    kill_threads = true; 
+    cv.notify_all();
+    while (num_threads_done != n_threads - 1) {
+        cv.notify_all();
+    }
 
     for (int j=1; j< n_threads; j++) {
         workers[j].join();
     }
 
+    // todo should delete the structs allocated and stored in the list of readytorun at some point...
+
 }
 
 
 void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
-
 
     // create the worker helper function here
 
@@ -176,14 +172,13 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
         std::unique_lock<std::mutex> lk(myMutex);
 
         while (!processing_tasks) {
-            cv.wait(lk); 
+            cv.wait(lk);
 
-            // TODO implement thread killing
-            // if (kill_threads) {
-            //     lk.unlock();
-            //     num_threads_done++; 
-            //     return; 
-            // }
+            if (kill_threads) {
+                lk.unlock();
+                num_threads_done++; 
+                return; 
+            }
         }
 
         int my_task = cur_task_index; 
@@ -191,10 +186,13 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
         if (my_task >= cur_num_total_tasks) {
             lk.unlock(); 
             num_threads_done += 1; 
-            // TODO : in the main orchestrating thread, make sure to call rebalance and grabnewlaunch before setting processing_tasks=false
+            if (num_threads_done == n_threads-1) {
+                processing_tasks = false;
+            }
             while (processing_tasks) {
             }
-            num_threads_done--; 
+            this->rebalanceRunning();
+            num_threads_done--;
             continue; 
         }
 
@@ -206,25 +204,23 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
 
 }
 
-
-    
-
 void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int num_total_tasks) {
+
+    this->sync();
 
     std::vector<TaskID> nodep = {};
     this->runAsyncWithDeps(runnable, num_total_tasks, nodep);
+
     this->sync();
 }
 
-
-
+// this function is inside a mutex (is called from rebalance running)
 void TaskSystemParallelThreadPoolSleeping::grabNewLaunch(void) {
 
     if (ready_to_run.empty()) {
         processing_tasks = false; // there are currrently no tasks to process
     }
 
-    // put all of this in a mutex
     auto it = ready_to_run.begin();
 
     cur_num_total_tasks = it->second->num_total_tasks;
@@ -235,7 +231,6 @@ void TaskSystemParallelThreadPoolSleeping::grabNewLaunch(void) {
     processing_tasks = true;
 
     ready_to_run.erase(it);
-    // end mutex
 }
 
 void TaskSystemParallelThreadPoolSleeping::rebalanceRunning(void) {
@@ -253,21 +248,23 @@ void TaskSystemParallelThreadPoolSleeping::rebalanceRunning(void) {
         }
     }
 
+    myMutex.lock(); // make sure there is no contention in grabbing the next launch
     if (processing_tasks == false) {
         this->grabNewLaunch();
         cv.notify_all();
     }
-
-    // re-check the launches_with_deps list and move unblocked launches into the ready_to_run vector
-    // adding something to the ready_to_run vector also includes updating the vectors of the num total tasks and stuff
+    myMutex.unlock();
 }
-
 
 TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnable, int n_total_tasks,
                                                     const std::vector<TaskID>& deps) {
 
+    std::cout << "266 " << n_total_tasks << std::endl;
+
     // add the task and dependencies to the launches_with_deps map
-    int launch_id = max_launch_id++; // TODO put a mutex around this
+    myMutex.lock();
+    int launch_id = max_launch_id++;
+    myMutex.unlock();
 
     LaunchInfo *launch_info = new LaunchInfo(launch_id, n_total_tasks, deps, runnable);
     launches_with_dep[max_launch_id] = launch_info;
@@ -279,11 +276,7 @@ TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnabl
 
 void TaskSystemParallelThreadPoolSleeping::sync() {
 
-    //
-    // TODO: CS149 students will modify the implementation of this method in Part B.
-    //
-
-    // TODO use a CV for this
+    // TODO use a CV for this instead of spinning!
     while(!(launches_with_dep.empty() && ready_to_run.empty())) {}
 
     return;

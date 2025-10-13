@@ -209,6 +209,8 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
 
 void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int num_total_tasks) {
 
+    std::cout << "in run " << std::endl;
+
     this->sync();
 
     std::vector<TaskID> nodep = {};
@@ -253,13 +255,15 @@ void TaskSystemParallelThreadPoolSleeping::rebalanceRunning(void) {
             }
         }
         if (dep_ok_to_run) {
-            std::cout << "another dependency ready to run! " << pair.first << std::endl;
+            std::cout << "another launch ready to run! " << pair.first << std::endl;
             ready_to_run[pair.first] = pair.second; // add entry into ready list
             entries_to_erase.push_back(pair.first);
         }
     }
 
+    // erase launches that we have added to 'ready_to_run'
     while(!entries_to_erase.empty()) {
+        std::cout << "erasing entry " << entries_to_erase.size() << std::endl;
         launches_with_dep.erase(entries_to_erase.back()); // remove entry from launches list
         entries_to_erase.pop_back();
     }
@@ -284,7 +288,7 @@ TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnabl
     myMutex.unlock();
 
     LaunchInfo *launch_info = new LaunchInfo(launch_id, n_total_tasks, deps, runnable);
-    launches_with_dep[max_launch_id] = launch_info;
+    launches_with_dep[launch_id] = launch_info;
 
     this->rebalanceRunning();
 
@@ -293,13 +297,13 @@ TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnabl
 
 void TaskSystemParallelThreadPoolSleeping::sync() {
 
+    std::cout << "in sync " << std::endl;
     // TODO use a CV for this instead of spinning!
-    while(!(launches_with_dep.empty() && ready_to_run.empty())) {
+    while(!launches_with_dep.empty() || !ready_to_run.empty()) {
         std::cout << "launches_with_dep " << launches_with_dep.size() << std::endl;
         std::cout << "ready_to_run " << ready_to_run.size() << std::endl;
-        sleep(1);
+        // sleep(1);
     }
-
 
     return;
 }

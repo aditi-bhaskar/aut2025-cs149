@@ -124,6 +124,8 @@ void TaskSystemParallelThreadPoolSpinning::sync() {
  * ================================================================
  */
 
+
+
 const char* TaskSystemParallelThreadPoolSleeping::name() {
     return "Parallel + Thread Pool + Sleep";
 }
@@ -156,7 +158,6 @@ TaskSystemParallelThreadPoolSleeping::~TaskSystemParallelThreadPoolSleeping() {
     }
 
     // todo: delete the structs allocated and stored in the list of readytorun at some point...
-
 }
 
 
@@ -215,7 +216,7 @@ void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int num_tota
 // this function is inside a mutex (is called from rebalance running)
 void TaskSystemParallelThreadPoolSleeping::grabNewLaunch(void) {
 
-    std::cout << "grabNewLaunch " << std::endl;
+    // std::cout << "grabNewLaunch " << std::endl;
 
     if (ready_to_run.empty()) {
         processing_tasks = false; // there are currrently no tasks to process
@@ -239,14 +240,14 @@ void TaskSystemParallelThreadPoolSleeping::rebalanceRunning(void) {
 
     myMutex.lock(); // make sure there is no contention in grabbing the next launch
 
-    std::cout << "rebalanceRunning " << std::endl;
+    // std::cout << "rebalanceRunning " << std::endl;
     std::vector<TaskID> entries_to_erase{};
 
-    std::cout << "len(launches_with_dep) " << launches_with_dep.size() << std::endl;
+    // std::cout << "len(launches_with_dep) " << launches_with_dep.size() << std::endl;
 
     for(const auto& pair : launches_with_dep) {
         bool dep_ok_to_run = true;
-        std::cout << "pair.first " << pair.first << std::endl;
+        // std::cout << "pair.first " << pair.first << std::endl;
         for(const auto& dep : pair.second->dependencies) {
             auto dep_in_done = std::find(done.begin(), done.end(), dep);
             if(dep_in_done == done.end()) {
@@ -254,7 +255,7 @@ void TaskSystemParallelThreadPoolSleeping::rebalanceRunning(void) {
             }
         }
         if (dep_ok_to_run) {
-            std::cout << "another launch ready to run! " << pair.first << std::endl;
+            // std::cout << "another launch ready to run! " << pair.first << std::endl;
             ready_to_run[pair.first] = pair.second; // add entry into ready list
             entries_to_erase.push_back(pair.first);
         }
@@ -262,7 +263,7 @@ void TaskSystemParallelThreadPoolSleeping::rebalanceRunning(void) {
 
     // erase launches that we have added to 'ready_to_run'
     while(!entries_to_erase.empty()) {
-        std::cout << "erasing entry " << entries_to_erase.size() << std::endl;
+        // std::cout << "erasing entry " << entries_to_erase.size() << std::endl;
         // if (launches_with_dep.find(entries_to_erase.back()) == launches_with_dep.end()) {
         //     std::cout << "entry not found, segfault cause found!!" << std::endl;
         // } 
@@ -282,7 +283,7 @@ void TaskSystemParallelThreadPoolSleeping::rebalanceRunning(void) {
 TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnable, int n_total_tasks,
                                                     const std::vector<TaskID>& deps) {
 
-    std::cout << "266 " << n_total_tasks << std::endl;
+    // std::cout << "266 " << n_total_tasks << std::endl;
 
     // add the task and dependencies to the launches_with_deps map
     myMutex.lock();
@@ -304,7 +305,6 @@ void TaskSystemParallelThreadPoolSleeping::sync() {
     while(!launches_with_dep.empty() || !ready_to_run.empty()) {
         // std::cout << "launches_with_dep " << launches_with_dep.size() << std::endl;
         // std::cout << "ready_to_run " << ready_to_run.size() << std::endl;
-        // sleep(1);
     }
 
     return;

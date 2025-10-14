@@ -62,7 +62,7 @@ TaskSystemParallelSpawn::TaskSystemParallelSpawn(int num_threads): ITaskSystem(n
     // (requiring changes to tasksys.h).
     //
 
-    n_threads = num_threads;
+    n_threads = num_threads; 
 }
 
 TaskSystemParallelSpawn::~TaskSystemParallelSpawn() {}
@@ -167,8 +167,8 @@ TaskSystemParallelThreadPoolSpinning::TaskSystemParallelThreadPoolSpinning(int n
 
     // std::thread workers[num_threads];
 
-    n_threads = num_threads; 
-    workers = new std::thread[num_threads];
+    n_threads = num_threads + 1; // +1 for the main thread too
+    workers = new std::thread[n_threads];
 
     for (int j = 1; j < n_threads; j++) {
         // std::cout << "starting thread " << j << std::endl;
@@ -337,8 +337,8 @@ TaskSystemParallelThreadPoolSleeping::TaskSystemParallelThreadPoolSleeping(int n
 
     // std::thread workers[num_threads];
 
-    n_threads = num_threads; 
-    workers = new std::thread[num_threads];
+    n_threads = num_threads + 1; 
+    workers = new std::thread[n_threads];
 
     for (int j = 1; j < n_threads; j++) {
         workers[j] = std::thread(&TaskSystemParallelThreadPoolSleeping::sleepRunThread, this, j);

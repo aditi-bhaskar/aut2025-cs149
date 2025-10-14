@@ -102,9 +102,12 @@ class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
 
         std::mutex myMutex;
         std::mutex myMutex2;
+        std::mutex cur_task_mutex;
 
         std::condition_variable cv;
         std::condition_variable cv2;
+        std::condition_variable cur_task_neg1;
+
         // std::unique_lock<std::mutex> lk(myMutex);
 };
 

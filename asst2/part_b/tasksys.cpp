@@ -125,7 +125,6 @@ void TaskSystemParallelThreadPoolSpinning::sync() {
  */
 
 
-
 const char* TaskSystemParallelThreadPoolSleeping::name() {
     return "Parallel + Thread Pool + Sleep";
 }
@@ -309,3 +308,9 @@ void TaskSystemParallelThreadPoolSleeping::sync() {
 
     return;
 }
+
+
+// todo:
+// make sure we mark tasks as DONE
+// make sure all accesses to ready_to_run are mutex blocked
+

@@ -287,33 +287,33 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
 
         // OLD FUNCTIONAL VERSION
 
-        // if (my_task >= num_total_tasks) {
-        //     lk.unlock(); 
-        //     num_threads_done += 1; 
-        //     // std::cout << num_threads_done << std::endl;
-        //     while (cur_task.load() != -1) {
-
-        //     }
-        //     num_threads_done--; 
-        //     continue; 
-        // }
-
-        // NEW VERSION WITH CV
         if (my_task >= num_total_tasks) {
             lk.unlock(); 
-
-            std::unique_lock<std::mutex> ctlk(cur_task_mutex);
-            // std::cout << "waiting" << std::endl;
-
             num_threads_done += 1; 
-            cur_task_neg1.wait(ctlk);
+            // std::cout << num_threads_done << std::endl;
+            while (cur_task.load() != -1) {
+
+            }
             num_threads_done--; 
-
-            // std::cout << "finished waiting" << std::endl;
-            ctlk.unlock();
-
             continue; 
         }
+
+        // NEW VERSION WITH CV, worse performance
+        // if (my_task >= num_total_tasks) {
+        //     lk.unlock(); 
+
+        //     std::unique_lock<std::mutex> ctlk(cur_task_mutex);
+        //     // std::cout << "waiting" << std::endl;
+
+        //     num_threads_done += 1; 
+        //     cur_task_neg1.wait(ctlk);
+        //     num_threads_done--; 
+
+        //     // std::cout << "finished waiting" << std::endl;
+        //     ctlk.unlock();
+
+        //     continue; 
+        // }
 
 
         cur_task += 1; 
@@ -341,7 +341,7 @@ void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int n_total_
     myMutex.lock();
     cur_task = -1; 
     myMutex.unlock();
-    cur_task_neg1.notify_all();
+    // cur_task_neg1.notify_all(); //  for version with cv, 
 
     // wait for all threads to finish execution (barrier)
     while (num_threads_done > 0) {}

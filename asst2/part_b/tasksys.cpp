@@ -2,6 +2,7 @@
 #include <iostream>
 #include <algorithm>
 #include <unistd.h>
+#include <cassert>
 
 IRunnable::~IRunnable() {}
 
@@ -186,7 +187,7 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
         int my_task = cur_task_index; 
 
         if (my_task >= cur_num_total_tasks) {
-            // std::cout << "182 " << cur_task_id << std::endl;
+            // std::cout << "182 " << cur_launch_id << std::endl;
             lk.unlock(); 
             num_threads_done += 1; 
             // std::cout << "185 " << num_threads_done << std::endl;
@@ -196,9 +197,9 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
             }
             while (processing_tasks) {
             }
-            // std::cout << "190 " << cur_task_id << std::endl;
+            // std::cout << "190 " << cur_launch_id << std::endl;
             this->rebalanceRunning();
-            // std::cout << "192 " << cur_task_id << " " << num_threads_done << std::endl;
+            // std::cout << "192 " << cur_launch_id << " " << num_threads_done << std::endl;
             num_threads_done--;
             continue; 
         }
@@ -223,89 +224,154 @@ void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int num_tota
     this->sync();
 }
 
-// this function is inside a mutex (is called from rebalance running)
-void TaskSystemParallelThreadPoolSleeping::grabNewLaunch(void) {
+// // this function is inside a mutex (is called from rebalance running)
+// void TaskSystemParallelThreadPoolSleeping::grabNewLaunch(void) {
 
-    // // std::cout << "grabNewLaunch " << std::endl;
+//     // std::cout << "grabNewLaunch" << std::endl;
 
-    if (ready_to_run.empty()) {
-        // std::cout << "ready to run empty" << std::endl;
-        processing_tasks = false; // there are currrently no tasks to process
-        return;
-    }
+//     // // std::cout << "grabNewLaunch " << std::endl;
 
-    auto it = ready_to_run.begin();
+//     if (ready_to_run.empty()) {
+//         // std::cout << "ready to run empty" << std::endl;
+//         processing_tasks = false; // there are currrently no tasks to process
+//         // std::cout << "grabNewLaunch done" << std::endl;
+//         return;
+//     }
 
-    cur_num_total_tasks = it->second->num_total_tasks;
-    cur_task_id = it->second->id;
-    cur_runnable = it->second->task_runnable;
+//     auto it = ready_to_run.begin();
 
-    // std::cout << "starting " << cur_task_id << std::endl;
+//     cur_num_total_tasks = it->second->num_total_tasks;
+//     cur_launch_id = it->second->id;
+//     cur_runnable = it->second->task_runnable;
 
-    cur_task_index = 0;
-    processing_tasks = true;
+//     // std::cout << "starting " << cur_launch_id << std::endl;
 
-    ready_to_run.erase(it);
+//     cur_task_index = 0;
+//     processing_tasks = true;
 
-    // std::cout << "we've started up the task, so we can mark it as done " << cur_task_id << std::endl;
-    done.push_back(cur_task_id);
+//     ready_to_run.erase(it);
 
-}
+//     // std::cout << "we've started up the task, so we can mark it as done " << cur_launch_id << std::endl;
+//     done.push_back(cur_launch_id);
+
+//     // std::cout << "grabNewLaunch done" << std::endl;
+
+// }
+
+// void TaskSystemParallelThreadPoolSleeping::rebalanceRunningOld(void) {
+
+//     // std::cout << "rebalanceRunning" << std::endl;
+
+//     // std::cout << "in rebalance running" << std::endl;
+
+//     myMutex.lock(); // make sure there is no contention in grabbing the next launch
+
+//     std::cout << "rebalanceRunning mutex" << std::endl;
+
+//     // // std::cout << "rebalanceRunning " << std::endl;
+//     std::vector<TaskID> entries_to_erase{};
+
+//     // // std::cout << "len(launches_with_dep) " << launches_with_dep.size() << std::endl;
+
+//     for(const auto& pair : launches_with_dep) {
+//         // std::cout << pair.first << pair.second << std::endl;
+//         bool dep_ok_to_run = true;
+//         // // std::cout << "pair.first " << pair.first << std::endl;
+//         for(const auto& dep : pair.second->dependencies) {
+//             // std::cout << "280" << std::endl;
+//             auto dep_in_done = std::find(done.begin(), done.end(), dep);
+//             if(dep_in_done == done.end()) {
+//                 dep_ok_to_run = false;
+//             }
+//         }
+//         if (dep_ok_to_run) {
+//             // std::cout << "286" << std::endl;
+//             // // std::cout << "another launch ready to run! " << pair.first << std::endl;
+//             ready_to_run[pair.first] = pair.second; // add entry into ready list
+//             entries_to_erase.push_back(pair.first);
+
+//             // std::cout << "rebalance running " << pair.second << " " << pair.second->id << std::endl;
+//         }
+//     }
+
+//     // erase launches that we have added to 'ready_to_run'
+
+//     std::cout << "296" << std::endl;
+
+//     while(!entries_to_erase.empty()) {
+//         // std::cout << "279" << std::endl;
+//         // // std::cout << "erasing entry " << entries_to_erase.size() << std::endl;
+//         // if (launches_with_dep.find(entries_to_erase.back()) == launches_with_dep.end()) {
+//         //     // std::cout << "entry not found, segfault cause found!!" << std::endl;
+//         // } 
+//         launches_with_dep.erase(entries_to_erase.back()); // remove entry from launches list
+//         entries_to_erase.pop_back();
+//     }
+
+//     // std::cout << "processing_tasks" << processing_tasks << std::endl;
+
+//     // myMutex.lock(); // make sure there is no contention in grabbing the next launch
+//     if (processing_tasks == false) {
+//         // std::cout << "grab new launch from rebalance" << std::endl;
+//         this->grabNewLaunch();
+//         cv.notify_all();
+//     }
+
+//     std::cout << "rebalanceRunning done" << std::endl;
+
+//     myMutex.unlock();
+
+    
+// }
 
 void TaskSystemParallelThreadPoolSleeping::rebalanceRunning(void) {
 
-    // std::cout << "in rebalance running" << std::endl;
+    myMutex.lock();
 
-    myMutex.lock(); // make sure there is no contention in grabbing the next launch
+    // std::cout << "starting rebalance" << std::endl;
 
-    // // std::cout << "rebalanceRunning " << std::endl;
-    std::vector<TaskID> entries_to_erase{};
-
-    // // std::cout << "len(launches_with_dep) " << launches_with_dep.size() << std::endl;
-
-    for(const auto& pair : launches_with_dep) {
-        // std::cout << pair.first << pair.second << std::endl;
-        bool dep_ok_to_run = true;
-        // // std::cout << "pair.first " << pair.first << std::endl;
-        for(const auto& dep : pair.second->dependencies) {
-            auto dep_in_done = std::find(done.begin(), done.end(), dep);
-            if(dep_in_done == done.end()) {
-                dep_ok_to_run = false;
+    for(auto it = launches_with_dep.begin(); it != launches_with_dep.end(); it++) {
+        // std::cout << it->first << std::endl;
+        assert(it->second != nullptr);
+        bool missed_dependency = false; 
+        for(long unsigned int i = 0; i < it->second->dependencies.size(); i++) {
+            if (std::find(done.begin(), done.end(), it->second->dependencies[i]) == done.end()) {
+                missed_dependency = true; 
             }
         }
-        if (dep_ok_to_run) {
-            // // std::cout << "another launch ready to run! " << pair.first << std::endl;
-            ready_to_run[pair.first] = pair.second; // add entry into ready list
-            entries_to_erase.push_back(pair.first);
-
-            // std::cout << "rebalance running " << pair.second << " " << pair.second->id << std::endl;
+        if(!missed_dependency) {
+            ready_to_run[it->first] = it->second; 
         }
     }
 
-    // erase launches that we have added to 'ready_to_run'
+    // std::cout << "344" << std::endl;
 
-    // std::cout << "276" << std::endl;
-
-    while(!entries_to_erase.empty()) {
-        // std::cout << "279" << std::endl;
-        // // std::cout << "erasing entry " << entries_to_erase.size() << std::endl;
-        // if (launches_with_dep.find(entries_to_erase.back()) == launches_with_dep.end()) {
-        //     // std::cout << "entry not found, segfault cause found!!" << std::endl;
-        // } 
-        launches_with_dep.erase(entries_to_erase.back()); // remove entry from launches list
-        entries_to_erase.pop_back();
+    for(auto it = ready_to_run.begin(); it != ready_to_run.end(); it++) {
+        if(launches_with_dep.find(it->first) != launches_with_dep.end()) {
+            launches_with_dep.erase(it->first); 
+        }
     }
 
-    // std::cout << "processing_tasks" << processing_tasks << std::endl;
+    if(!processing_tasks && !ready_to_run.empty()) {
 
-    // myMutex.lock(); // make sure there is no contention in grabbing the next launch
-    if (processing_tasks == false) {
-        // std::cout << "grab new launch from rebalance" << std::endl;
-        this->grabNewLaunch();
+        auto it = ready_to_run.begin(); 
+        auto [key, val] = *it; 
+        ready_to_run.erase(it); 
+
+        cur_task_index = 0; 
+        cur_launch_id = key; 
+        cur_runnable = val->task_runnable; 
+        cur_num_total_tasks = val->num_total_tasks; 
+
+        done.push_back(cur_launch_id); 
+        processing_tasks = true; 
         cv.notify_all();
     }
 
+    // std::cout << "ending rebalance" << std::endl;
+
     myMutex.unlock();
+
 }
 
 TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnable, int n_total_tasks,
@@ -313,15 +379,17 @@ TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnabl
 
     // // std::cout << "266 " << n_total_tasks << std::endl;
 
-    // add the task and dependencies to the launches_with_deps map
+    // add the task and dependencies to the launches_with_dep map
     myMutex.lock();
     int launch_id = max_launch_id++;
     // std::cout << "LAUNCH ID " << launch_id << std::endl;
-    myMutex.unlock();
+    
 
     LaunchInfo *launch_info = new LaunchInfo(launch_id, n_total_tasks, deps, runnable);
     // // std::cout << "new launch info " << *launch_info << " " << launch_id << // std::cout; 
     launches_with_dep[launch_id] = launch_info;
+
+    myMutex.unlock();
 
     this->rebalanceRunning();
     this->sync();

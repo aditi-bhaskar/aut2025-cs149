@@ -100,7 +100,7 @@ class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
         std::atomic<int> num_threads_ready_to_die{0}; 
 
         // per-launch info
-        TaskID cur_task_id;  // cur task id
+        TaskID cur_launch_id;  // cur task id
         std::atomic<int> cur_num_total_tasks{0}; // total tasks for this launch
         IRunnable *cur_runnable{0}; // total tasks for this launch
         

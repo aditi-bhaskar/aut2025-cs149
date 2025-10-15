@@ -288,6 +288,9 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
             while (cur_task.load() != -1) {
                 cv.notify_all();
             }
+            // while (num_threads_done != num_threads-1) {
+            // }
+            // cv.notify_all();
             num_threads_done--; 
             continue; 
         }
@@ -309,16 +312,13 @@ void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int n_total_
     cur_task = 0; 
     
     std::unique_lock<std::mutex> lk(myMutex);
-
     while (num_threads_done != n_threads - 1) {
         cv.wait(lk);
     }
-
     cur_task = -1; 
     lk.unlock();
 
-    while (num_threads_done > 0) {
-    }
+    while (num_threads_done > 0) {}
     num_threads_done = 0; 
 
 }

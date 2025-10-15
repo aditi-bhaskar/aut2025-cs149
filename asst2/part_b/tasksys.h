@@ -97,6 +97,7 @@ class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
         std::atomic<int> cur_task_index{0};  // cur task index within the launch
         std::atomic<int> num_threads_done{0}; 
         std::atomic<int> num_threads_awake{0}; 
+        std::atomic<int> num_threads_ready_to_die{0}; 
 
         // per-launch info
         TaskID cur_task_id;  // cur task id

@@ -142,19 +142,25 @@ TaskSystemParallelThreadPoolSleeping::TaskSystemParallelThreadPoolSleeping(int n
 
 TaskSystemParallelThreadPoolSleeping::~TaskSystemParallelThreadPoolSleeping() {
 
-    std::cout << "destructor " << std::endl;
+    // std::cout << "destructordestructordestructordestructordestructordestructordestructor " << std::endl;
 
     this->sync();
 
+    // std::cout << "149" << std::endl;
+
     kill_threads = true; 
     cv.notify_all();
-    while (num_threads_done != n_threads - 1) {
+    while (num_threads_ready_to_die != n_threads - 1) {
+        // std::cout << "154" << std::endl;
         cv.notify_all();
     }
+
+    // std::cout << "158" << std::endl;
 
     for (int j=1; j< n_threads; j++) {
         workers[j].join();
     }
+    // std::cout << "163" << std::endl;
 
     // todo: delete the structs allocated and stored in the list of readytorun at some point...
 }
@@ -167,11 +173,12 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
 
         while (!processing_tasks) {
             cv.wait(lk);
-            std::cout << "thread awake! " << thread_id << std::endl;
+            // // std::cout << "thread awake! " << thread_id << std::endl;
 
             if (kill_threads) {
                 lk.unlock();
-                num_threads_done++; 
+                // num_threads_done++; 
+                num_threads_ready_to_die++;
                 return; 
             }
         }
@@ -179,15 +186,19 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
         int my_task = cur_task_index; 
 
         if (my_task >= cur_num_total_tasks) {
+            // std::cout << "182 " << cur_task_id << std::endl;
             lk.unlock(); 
             num_threads_done += 1; 
+            // std::cout << "185 " << num_threads_done << std::endl;
             if (num_threads_done == n_threads-1) {
-                std::cout << "setting processing_tasks to false " << std::endl;
+                // std::cout << "setting processing_tasks to false " << std::endl;
                 processing_tasks = false;
             }
             while (processing_tasks) {
             }
+            // std::cout << "190 " << cur_task_id << std::endl;
             this->rebalanceRunning();
+            // std::cout << "192 " << cur_task_id << " " << num_threads_done << std::endl;
             num_threads_done--;
             continue; 
         }
@@ -202,7 +213,7 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
 
 void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int num_total_tasks) {
 
-    std::cout << "in run " << std::endl;
+    // std::cout << "in run " << std::endl;
 
     this->sync();
 
@@ -215,9 +226,10 @@ void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int num_tota
 // this function is inside a mutex (is called from rebalance running)
 void TaskSystemParallelThreadPoolSleeping::grabNewLaunch(void) {
 
-    // std::cout << "grabNewLaunch " << std::endl;
+    // // std::cout << "grabNewLaunch " << std::endl;
 
     if (ready_to_run.empty()) {
+        // std::cout << "ready to run empty" << std::endl;
         processing_tasks = false; // there are currrently no tasks to process
         return;
     }
@@ -228,25 +240,33 @@ void TaskSystemParallelThreadPoolSleeping::grabNewLaunch(void) {
     cur_task_id = it->second->id;
     cur_runnable = it->second->task_runnable;
 
+    // std::cout << "starting " << cur_task_id << std::endl;
+
     cur_task_index = 0;
     processing_tasks = true;
 
     ready_to_run.erase(it);
 
+    // std::cout << "we've started up the task, so we can mark it as done " << cur_task_id << std::endl;
+    done.push_back(cur_task_id);
+
 }
 
 void TaskSystemParallelThreadPoolSleeping::rebalanceRunning(void) {
 
+    // std::cout << "in rebalance running" << std::endl;
+
     myMutex.lock(); // make sure there is no contention in grabbing the next launch
 
-    // std::cout << "rebalanceRunning " << std::endl;
+    // // std::cout << "rebalanceRunning " << std::endl;
     std::vector<TaskID> entries_to_erase{};
 
-    // std::cout << "len(launches_with_dep) " << launches_with_dep.size() << std::endl;
+    // // std::cout << "len(launches_with_dep) " << launches_with_dep.size() << std::endl;
 
     for(const auto& pair : launches_with_dep) {
+        // std::cout << pair.first << pair.second << std::endl;
         bool dep_ok_to_run = true;
-        // std::cout << "pair.first " << pair.first << std::endl;
+        // // std::cout << "pair.first " << pair.first << std::endl;
         for(const auto& dep : pair.second->dependencies) {
             auto dep_in_done = std::find(done.begin(), done.end(), dep);
             if(dep_in_done == done.end()) {
@@ -254,24 +274,33 @@ void TaskSystemParallelThreadPoolSleeping::rebalanceRunning(void) {
             }
         }
         if (dep_ok_to_run) {
-            // std::cout << "another launch ready to run! " << pair.first << std::endl;
+            // // std::cout << "another launch ready to run! " << pair.first << std::endl;
             ready_to_run[pair.first] = pair.second; // add entry into ready list
             entries_to_erase.push_back(pair.first);
+
+            // std::cout << "rebalance running " << pair.second << " " << pair.second->id << std::endl;
         }
     }
 
     // erase launches that we have added to 'ready_to_run'
+
+    // std::cout << "276" << std::endl;
+
     while(!entries_to_erase.empty()) {
-        // std::cout << "erasing entry " << entries_to_erase.size() << std::endl;
+        // std::cout << "279" << std::endl;
+        // // std::cout << "erasing entry " << entries_to_erase.size() << std::endl;
         // if (launches_with_dep.find(entries_to_erase.back()) == launches_with_dep.end()) {
-        //     std::cout << "entry not found, segfault cause found!!" << std::endl;
+        //     // std::cout << "entry not found, segfault cause found!!" << std::endl;
         // } 
         launches_with_dep.erase(entries_to_erase.back()); // remove entry from launches list
         entries_to_erase.pop_back();
     }
 
+    // std::cout << "processing_tasks" << processing_tasks << std::endl;
+
     // myMutex.lock(); // make sure there is no contention in grabbing the next launch
     if (processing_tasks == false) {
+        // std::cout << "grab new launch from rebalance" << std::endl;
         this->grabNewLaunch();
         cv.notify_all();
     }
@@ -282,28 +311,31 @@ void TaskSystemParallelThreadPoolSleeping::rebalanceRunning(void) {
 TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnable, int n_total_tasks,
                                                     const std::vector<TaskID>& deps) {
 
-    // std::cout << "266 " << n_total_tasks << std::endl;
+    // // std::cout << "266 " << n_total_tasks << std::endl;
 
     // add the task and dependencies to the launches_with_deps map
     myMutex.lock();
     int launch_id = max_launch_id++;
+    // std::cout << "LAUNCH ID " << launch_id << std::endl;
     myMutex.unlock();
 
     LaunchInfo *launch_info = new LaunchInfo(launch_id, n_total_tasks, deps, runnable);
+    // // std::cout << "new launch info " << *launch_info << " " << launch_id << // std::cout; 
     launches_with_dep[launch_id] = launch_info;
 
     this->rebalanceRunning();
+    this->sync();
 
     return (TaskID)launch_id;
 }
 
 void TaskSystemParallelThreadPoolSleeping::sync() {
 
-    std::cout << "in sync " << std::endl;
+    // // std::cout << "in sync " << std::endl;
     // TODO use a CV for this instead of spinning!
-    while(!launches_with_dep.empty() || !ready_to_run.empty()) {
-        // std::cout << "launches_with_dep " << launches_with_dep.size() << std::endl;
-        // std::cout << "ready_to_run " << ready_to_run.size() << std::endl;
+    while(!launches_with_dep.empty() || !ready_to_run.empty() || processing_tasks) {
+        // // std::cout << "launches_with_dep " << launches_with_dep.size() << std::endl;
+        // // std::cout << "ready_to_run " << ready_to_run.size() << std::endl;
     }
 
     return;

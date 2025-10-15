@@ -242,7 +242,7 @@ TaskSystemParallelThreadPoolSleeping::TaskSystemParallelThreadPoolSleeping(int n
     // (requiring changes to tasksys.h).
     //
 
-    n_threads = num_threads; 
+    n_threads = num_threads + 1; 
     workers = new std::thread[n_threads];
 
     for (int j = 1; j < n_threads; j++) {
@@ -269,55 +269,31 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
 
     while(true) {
 
-        // myMutex.lock(); 
-        std::unique_lock<std::mutex> lk(myMutex);
-
-        while (cur_task == -1) {
-
-            cv.wait(lk); 
-            if (kill_threads) {
-                lk.unlock();
-                num_threads_done++; 
-                return; 
-            }
+        if (kill_threads) {
+            num_threads_done++; 
+            return; 
+        }
+    
+        if (cur_task == -1) {
+            continue; 
         }
 
+
+        myMutex.lock(); 
         int my_task = cur_task; 
 
-
-        // OLD FUNCTIONAL VERSION
-
         if (my_task >= num_total_tasks) {
-            lk.unlock(); 
+            myMutex.unlock(); 
             num_threads_done += 1; 
-            // std::cout << num_threads_done << std::endl;
             while (cur_task.load() != -1) {
-
+                cv.notify_all();
             }
             num_threads_done--; 
             continue; 
         }
 
-        // NEW VERSION WITH CV, worse performance
-        // if (my_task >= num_total_tasks) {
-        //     lk.unlock(); 
-
-        //     std::unique_lock<std::mutex> ctlk(cur_task_mutex);
-        //     // std::cout << "waiting" << std::endl;
-
-        //     num_threads_done += 1; 
-        //     cur_task_neg1.wait(ctlk);
-        //     num_threads_done--; 
-
-        //     // std::cout << "finished waiting" << std::endl;
-        //     ctlk.unlock();
-
-        //     continue; 
-        // }
-
-
         cur_task += 1; 
-        lk.unlock(); 
+        myMutex.unlock(); 
 
         run_function->runTask(my_task, num_total_tasks);
     }
@@ -330,22 +306,19 @@ void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int n_total_
     num_threads_done = 0; 
     num_total_tasks = n_total_tasks; 
 
-    myMutex.lock();
     cur_task = 0; 
-    cv.notify_all(); 
-    myMutex.unlock();
     
-    while(num_threads_done < n_threads - 1) {} // spin until all threads reach here
+    std::unique_lock<std::mutex> lk(myMutex);
 
-    // set the task to -1, and then notify all threads to continue
-    myMutex.lock();
+    while (num_threads_done != n_threads - 1) {
+        cv.wait(lk);
+    }
+
     cur_task = -1; 
-    myMutex.unlock();
-    // cur_task_neg1.notify_all(); //  for version with cv, 
+    lk.unlock();
 
-    // wait for all threads to finish execution (barrier)
-    while (num_threads_done > 0) {}
-
+    while (num_threads_done > 0) {
+    }
     num_threads_done = 0; 
 
 }

@@ -1,5 +1,5 @@
 #include "tasksys.h"
-
+#include <iostream>
 
 IRunnable::~IRunnable() {}
 
@@ -134,12 +134,16 @@ TaskSystemParallelThreadPoolSleeping::TaskSystemParallelThreadPoolSleeping(int n
     // (requiring changes to tasksys.h).
     //
 
+    std::cout << "entering constructor" << std::endl;
+
     n_threads = num_threads; 
     workers = new std::thread[num_threads];
 
     for (int j = 1; j < n_threads; j++) {
         workers[j] = std::thread(&TaskSystemParallelThreadPoolSleeping::sleepRunThread, this, j);
     }
+
+    std::cout << "exiting constructor" << std::endl;
 }
 
 TaskSystemParallelThreadPoolSleeping::~TaskSystemParallelThreadPoolSleeping() {
@@ -150,17 +154,22 @@ TaskSystemParallelThreadPoolSleeping::~TaskSystemParallelThreadPoolSleeping() {
     // (requiring changes to tasksys.h).
     //
 
+    std::cout << "entering destructor" << std::endl;
+
     this->sync();
 
-    cv.notify_all();
+    // cv.notify_all();
 
     while(n_launches_left != 0) {
-        cv.notify_all();
+        std::cout << "in destructor | n_launches_left " << n_launches_left << " | task_queue_empty " << task_queue.empty() << std::endl;
+        // cv.notify_all();
     }
     
     for (int j=1; j< n_threads; j++) {
         workers[j].join();
     }
+
+    std::cout << "exiting destructor" << std::endl;
 
 }
 
@@ -172,6 +181,8 @@ void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int num_tota
     // tasks sequentially on the calling thread.
     //
 
+    // std::cout << "entering run" << std::endl;
+
     this->sync();
 
     std::vector<TaskID> nodep = {};
@@ -179,40 +190,56 @@ void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int num_tota
 
     this->sync();
 
+    // std::cout << "exiting run" << std::endl;
+
 }
 
 void TaskSystemParallelThreadPoolSleeping::addToTaskQueue(LaunchInfo* launch) {
 
-    taskMutex.lock(); 
+    // std::cout << "entering addToTaskQueue" << std::endl;
+
     for(size_t i = 0; i < launch->remaining_tasks; i++) {
+        // std::cout << "203 " << launch->id << std::endl;
         TaskInfo* new_task_info = new TaskInfo(launch->id, launch->remaining_tasks, i, launch->task_runnable);
         task_queue.push_back(*new_task_info); 
     }
-    taskMutex.unlock(); 
 }
 
 void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
+
+    // std::cout << "entering sleepRunThread" << std::endl;
+
     while(true) {
 
         std::unique_lock<std::mutex> lk(taskMutex);
 
+        if (n_launches_left <= 0 && task_queue.empty()) {
+            std::cout << "exiting sleepRunThread" << std::endl;
+            return; 
+        }
+
         while (task_queue.empty()) {
+            std::cout << "spinning 222" << std::endl;
             cv.wait(lk);
 
-            if (n_launches_left == 0) {
-                return; 
-            }
         }
 
         // grab new task 
-        taskMutex.lock(); 
         TaskInfo task = task_queue.back(); 
-        taskMutex.unlock(); 
+        task_queue.pop_back();
+        lk.unlock();
+        
+        std::cout << "running runnable 241 | launch " << task.id << " | task " << task.cur_id << " | thread " << thread_id << " | n_launches_left " << n_launches_left << std::endl;
 
         task.task_runnable->runTask(task.cur_id, task.n_total_tasks);
 
-        launchMutex.lock();
+        std::cout << "done running | launch " << task.id << " | task " << task.cur_id << " | thread " << thread_id << " | n_launches_left " << n_launches_left << std::endl;
+
+        // launchMutex.lock();
+        lk.lock(); 
         launches[task.id]->remaining_tasks--; 
+
+        std::cout << "update | launch " << task.id << " | remaining " << launches[task.id]->remaining_tasks << " | n_launches_left " << n_launches_left << std::endl;
 
         if (launches[task.id]->remaining_tasks == 0) {
             std::vector<TaskID> children_list = launches[task.id]->children;
@@ -225,11 +252,18 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
             }
 
             n_launches_left--; 
-        }
+            std::cout << "decrementing " << n_launches_left << std::endl;
+            // lk.unlock();
 
-        launchMutex.unlock();
-        
+            cv.notify_all();
+        } 
+        else {
+            // lk.unlock();
+        }
+        lk.unlock();
     }
+
+    std::cout << "exiting sleepRunThread" << std::endl;
 }
 
 TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnable, int num_total_tasks,
@@ -237,6 +271,7 @@ TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnabl
     //
     // TODO: CS149 students will implement this method in Part B.
     //
+    taskMutex.lock(); 
 
     int launch_id = max_launch_id++;
     n_launches_left++; 
@@ -247,20 +282,35 @@ TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnabl
     );
 
     // add this launch to parents' structs
-    launchMutex.lock(); 
+    launches[launch_id] = launch_info; 
+
+    int deps_left = deps.size(); 
+
     for (size_t i = 0; i < deps.size(); i++) {
         launches[deps[i]]->children.push_back(launch_id);
-    }
-    launchMutex.unlock(); 
 
+        if (launches[deps[i]]->remaining_tasks == 0) {
+            deps_left--; 
+            launch_info->n_parents--; 
+        }
+    }
+
+    launch_info->n_parents = deps_left;
+    launches[launch_id] = launch_info;
+    
     // if the launch has no dependencies, add to task queue 
-    if (deps.size() == 0) {
+    if (deps_left == 0) {
         this->addToTaskQueue(launch_info); 
+        taskMutex.unlock(); 
+        cv.notify_all(); 
+        // taskMutex.lock(); 
     }
 
-    if (n_launches_left == 1) { // n_launches_left *was* zero, we just pushed a new launch
-        cv.notify_all(); 
-    }
+    taskMutex.unlock(); 
+
+    // if (n_launches_left == 1) { // n_launches_left *was* zero, we just pushed a new launch
+    //     cv.notify_all(); 
+    // }
 
     return 0;
 }
@@ -271,8 +321,14 @@ void TaskSystemParallelThreadPoolSleeping::sync() {
     // TODO: CS149 students will modify the implementation of this method in Part B.
     //
 
-    while(!task_queue.empty()) {
+    std::cout << "entering sync" << std::endl;
+
+    while(!task_queue.empty() || n_launches_left > 0) {
+        // std::cout << "spinning 326" << std::endl;
+        std::cout << "in sync | n_launches_left " << n_launches_left << " | task_queue_empty " << task_queue.empty() << std::endl;
     }
+
+    std::cout << "exiting sync | n_launches_left " << n_launches_left << " | task_queue_empty " << task_queue.empty() << std::endl;
 
     return;
 }

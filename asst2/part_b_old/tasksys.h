@@ -2,6 +2,12 @@
 #define _TASKSYS_H
 
 #include "itasksys.h"
+#include <atomic>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <vector>
+#include <map>
 
 /*
  * TaskSystemSerial: This class is the student's implementation of a
@@ -55,24 +61,12 @@ class TaskSystemParallelThreadPoolSpinning: public ITaskSystem {
 
 struct LaunchInfo {
     TaskID id;
-    uint64_t remaining_tasks;
-    uint64_t n_parents;
-    std::vector<TaskID> children;
+    uint64_t num_total_tasks;
+    std::vector<TaskID> dependencies;
     IRunnable *task_runnable;
 
-    LaunchInfo(TaskID i, uint64_t n, uint64_t p, std::vector<TaskID> d, IRunnable *t):
-        id(i), remaining_tasks(n), n_parents(p), children(d), task_runnable(t) {}
-        
-};
-
-struct TaskInfo {
-    TaskID id;
-    uint64_t n_total_tasks;
-    uint64_t cur_id;
-    IRunnable *task_runnable;
-
-    LaunchInfo(TaskID i, uint64_t n, uint64_t c, IRunnable *t):
-        id(i), n_total_tasks(n), cur_id(p), task_runnable(t) {}
+    LaunchInfo(TaskID i, uint64_t n, std::vector<TaskID> d, IRunnable *t):
+        id(i), num_total_tasks(n), dependencies(d), task_runnable(t) {}
         
 };
 
@@ -93,14 +87,37 @@ class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
         void sync();
 
     private:
-        int n_threads; 
+        int n_threads;
         std::thread* workers;
+        std::atomic<bool> kill_threads{false}; 
 
-        std::map<TaskID, LaunchInfo*> launches; 
-        std::vector<TaskInfo> task_queue;
 
-        std::mutex taskMutex;
-        std::mutex launchMutex;
+        // maintain global task index for processing
+        std::atomic<bool> processing_tasks{false};
+        std::atomic<int> cur_task_index{0};  // cur task index within the launch
+        std::atomic<int> num_threads_done{0}; 
+        std::atomic<int> num_threads_awake{0}; 
+        std::atomic<int> num_threads_ready_to_die{0}; 
+
+        // per-launch info
+        TaskID cur_launch_id;  // cur task id
+        std::atomic<int> cur_num_total_tasks{0}; // total tasks for this launch
+        IRunnable *cur_runnable{0}; // total tasks for this launch
+        
+        // maintain DAG info + states for tasks
+        std::atomic<int> max_launch_id{0}; // unique launchid for each incoming batched set of tasks
+        std::map<TaskID, LaunchInfo*> launches_with_dep;
+        std::map<TaskID, LaunchInfo*> ready_to_run;
+        std::vector<TaskID> done;
+
+        // used for coordinating/running between threads
+        std::mutex myMutex;
+        std::condition_variable cv;
+
+        void rebalanceRunning(void);
+        void sleepRunThread(int thread_id);
+        void grabNewLaunch(void);
 };
 
 #endif
+

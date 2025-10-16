@@ -133,6 +133,13 @@ TaskSystemParallelThreadPoolSleeping::TaskSystemParallelThreadPoolSleeping(int n
     // Implementations are free to add new class member variables
     // (requiring changes to tasksys.h).
     //
+
+    n_threads = num_threads; 
+    workers = new std::thread[num_threads];
+
+    for (int j = 1; j < n_threads; j++) {
+        workers[j] = std::thread(&TaskSystemParallelThreadPoolSleeping::sleepRunThread, this, j);
+    }
 }
 
 TaskSystemParallelThreadPoolSleeping::~TaskSystemParallelThreadPoolSleeping() {
@@ -142,6 +149,19 @@ TaskSystemParallelThreadPoolSleeping::~TaskSystemParallelThreadPoolSleeping() {
     // Implementations are free to add new class member variables
     // (requiring changes to tasksys.h).
     //
+
+    this->sync();
+
+    cv.notify_all();
+
+    while(n_launches_left != 0) {
+        cv.notify_all();
+    }
+    
+    for (int j=1; j< n_threads; j++) {
+        workers[j].join();
+    }
+
 }
 
 void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int num_total_tasks) {
@@ -152,19 +172,21 @@ void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int num_tota
     // tasks sequentially on the calling thread.
     //
 
-    for (int i = 0; i < num_total_tasks; i++) {
-        runnable->runTask(i, num_total_tasks);
-    }
+    this->sync();
+
+    std::vector<TaskID> nodep = {};
+    this->runAsyncWithDeps(runnable, num_total_tasks, nodep);
+
+    this->sync();
+
 }
 
 void TaskSystemParallelThreadPoolSleeping::addToTaskQueue(LaunchInfo* launch) {
 
     taskMutex.lock(); 
-    for(int i = 0; i < launch->remaining_tasks; i++) {
-        TaskInfo *new_task_info = new TaskInfo(
-            launch->id, launch->remaining_tasks, i, launch->runnable
-        )
-        task_queue.push_back(new_task_info); 
+    for(size_t i = 0; i < launch->remaining_tasks; i++) {
+        TaskInfo* new_task_info = new TaskInfo(launch->id, launch->remaining_tasks, i, launch->task_runnable);
+        task_queue.push_back(*new_task_info); 
     }
     taskMutex.unlock(); 
 }
@@ -172,25 +194,37 @@ void TaskSystemParallelThreadPoolSleeping::addToTaskQueue(LaunchInfo* launch) {
 void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
     while(true) {
 
+        std::unique_lock<std::mutex> lk(taskMutex);
+
+        while (task_queue.empty()) {
+            cv.wait(lk);
+
+            if (n_launches_left == 0) {
+                return; 
+            }
+        }
+
         // grab new task 
         taskMutex.lock(); 
         TaskInfo task = task_queue.back(); 
         taskMutex.unlock(); 
 
-        task->task_runnable->runTask(task->cur_id, task->n_total_tasks);
+        task.task_runnable->runTask(task.cur_id, task.n_total_tasks);
 
         launchMutex.lock();
-        launches[task->id]->remaining_tasks--; 
+        launches[task.id]->remaining_tasks--; 
 
-        if (launches[task->id]->remaining_tasks == 0) {
-            std::vector<TaskID> children_list = launches[task->id]->children;
-            for (int i = 0; i < children_list.size(); i++) {
+        if (launches[task.id]->remaining_tasks == 0) {
+            std::vector<TaskID> children_list = launches[task.id]->children;
+            for (size_t i = 0; i < children_list.size(); i++) {
                 launches[children_list[i]]->n_parents--; 
                 if (launches[children_list[i]]->n_parents == 0) {
                     // add child to task queue 
                     this->addToTaskQueue(launches[children_list[i]]); 
                 }
             }
+
+            n_launches_left--; 
         }
 
         launchMutex.unlock();
@@ -205,6 +239,7 @@ TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnabl
     //
 
     int launch_id = max_launch_id++;
+    n_launches_left++; 
     std::vector<TaskID> emptyChildren;
 
     LaunchInfo *launch_info = new LaunchInfo(
@@ -213,7 +248,7 @@ TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnabl
 
     // add this launch to parents' structs
     launchMutex.lock(); 
-    for (int i = 0; i < deps.size(); i++) {
+    for (size_t i = 0; i < deps.size(); i++) {
         launches[deps[i]]->children.push_back(launch_id);
     }
     launchMutex.unlock(); 
@@ -221,6 +256,10 @@ TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnabl
     // if the launch has no dependencies, add to task queue 
     if (deps.size() == 0) {
         this->addToTaskQueue(launch_info); 
+    }
+
+    if (n_launches_left == 1) { // n_launches_left *was* zero, we just pushed a new launch
+        cv.notify_all(); 
     }
 
     return 0;
@@ -231,6 +270,9 @@ void TaskSystemParallelThreadPoolSleeping::sync() {
     //
     // TODO: CS149 students will modify the implementation of this method in Part B.
     //
+
+    while(!task_queue.empty()) {
+    }
 
     return;
 }

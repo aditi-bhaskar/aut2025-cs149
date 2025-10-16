@@ -2,6 +2,12 @@
 #define _TASKSYS_H
 
 #include "itasksys.h"
+#include <atomic>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <vector>
+#include <map>
 
 /*
  * TaskSystemSerial: This class is the student's implementation of a
@@ -71,8 +77,8 @@ struct TaskInfo {
     uint64_t cur_id;
     IRunnable *task_runnable;
 
-    LaunchInfo(TaskID i, uint64_t n, uint64_t c, IRunnable *t):
-        id(i), n_total_tasks(n), cur_id(p), task_runnable(t) {}
+    TaskInfo(TaskID i, uint64_t n, uint64_t c, IRunnable *t):
+        id(i), n_total_tasks(n), cur_id(c), task_runnable(t) {}
         
 };
 
@@ -96,11 +102,19 @@ class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
         int n_threads; 
         std::thread* workers;
 
+        std::atomic<int> max_launch_id{0};
+        std::atomic<int> n_launches_left{0};
+
         std::map<TaskID, LaunchInfo*> launches; 
         std::vector<TaskInfo> task_queue;
 
         std::mutex taskMutex;
         std::mutex launchMutex;
+
+        std::condition_variable cv;
+
+        void addToTaskQueue(LaunchInfo* launch);
+        void sleepRunThread(int thread_id);
 };
 
 #endif

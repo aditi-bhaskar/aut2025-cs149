@@ -304,9 +304,10 @@ TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnabl
         taskMutex.unlock(); 
         cv.notify_all(); 
         // taskMutex.lock(); 
+    } else {
+        taskMutex.unlock(); // make sure to only unlock mutex once.
     }
 
-    taskMutex.unlock(); 
 
     // if (n_launches_left == 1) { // n_launches_left *was* zero, we just pushed a new launch
     //     cv.notify_all(); 

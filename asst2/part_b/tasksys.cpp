@@ -159,12 +159,18 @@ TaskSystemParallelThreadPoolSleeping::~TaskSystemParallelThreadPoolSleeping() {
     this->sync();
 
     // cv.notify_all();
+    std::cout << "161 finished sync in destructor | " << n_launches_left << std::endl;
 
-    while(n_launches_left != 0) {
-        std::cout << "in destructor | n_launches_left " << n_launches_left << " | task_queue_empty " << task_queue.empty() << std::endl;
-        // cv.notify_all();
+    threads_ready_to_die = 0;
+    killing_threads = true;
+    while(n_launches_left != 0 || threads_ready_to_die < n_threads-1) { // aditi check
+        std::cout << "in destructor | n_launches_left " << n_launches_left << " | task_queue_empty " << task_queue.empty() << 
+        " | threads_ready_to_die " << threads_ready_to_die << " | n_threads-1 " << n_threads-1 << std::endl;
+        cv.notify_all();
     }
     
+    std::cout << "in destructor | right before joining all threads together" << " | threads_ready_to_die " << threads_ready_to_die << " | n_threads-1 " << n_threads-1 << std::endl;
+
     for (int j=1; j< n_threads; j++) {
         workers[j].join();
     }
@@ -213,16 +219,24 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
 
         std::unique_lock<std::mutex> lk(taskMutex);
 
-        if (n_launches_left <= 0 && task_queue.empty()) {
-            std::cout << "exiting sleepRunThread" << std::endl;
+        if (n_launches_left <= 0 && task_queue.empty() && killing_threads) {
+        // if (n_launches_left <= 0 && task_queue.empty()) {
+            threads_ready_to_die += 1;
+            std::cout << "exiting sleepRunThread: v1" << std::endl;
             return; 
         }
 
         while (task_queue.empty()) {
             std::cout << "spinning 222" << std::endl;
             cv.wait(lk);
-
+            if (n_launches_left <= 0 && task_queue.empty() && killing_threads) { // aditi
+            // if (n_launches_left <= 0 && task_queue.empty()) { // aditi
+                threads_ready_to_die += 1;
+                std::cout << "exiting sleepRunThread: v2" << std::endl;
+                return;   
+            }
         }
+
 
         // grab new task 
         TaskInfo task = task_queue.back(); 
@@ -241,7 +255,7 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
 
         std::cout << "update | launch " << task.id << " | remaining " << launches[task.id]->remaining_tasks << " | n_launches_left " << n_launches_left << std::endl;
 
-        if (launches[task.id]->remaining_tasks == 0) {
+        if (launches[task.id]->remaining_tasks == 0) { // aditi check
             std::vector<TaskID> children_list = launches[task.id]->children;
             for (size_t i = 0; i < children_list.size(); i++) {
                 launches[children_list[i]]->n_parents--; 
@@ -253,14 +267,14 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
 
             n_launches_left--; 
             std::cout << "decrementing " << n_launches_left << std::endl;
-            // lk.unlock();
+            lk.unlock();
 
             cv.notify_all();
         } 
         else {
-            // lk.unlock();
+            lk.unlock();
         }
-        lk.unlock();
+        // lk.unlock();
     }
 
     std::cout << "exiting sleepRunThread" << std::endl;
@@ -326,6 +340,7 @@ void TaskSystemParallelThreadPoolSleeping::sync() {
 
     while(!task_queue.empty() || n_launches_left > 0) {
         // std::cout << "spinning 326" << std::endl;
+        // aditi todo
         std::cout << "in sync | n_launches_left " << n_launches_left << " | task_queue_empty " << task_queue.empty() << std::endl;
     }
 
@@ -333,3 +348,8 @@ void TaskSystemParallelThreadPoolSleeping::sync() {
 
     return;
 }
+
+
+// lingering issues:
+//   1. when we get to in_sync and there are 2 launches left, but task queue is empty. suggests we dont add tasks onto queue in some situations, which is problematic
+//   2. [FIXED] we try to kill the threads before all are ready to die! 

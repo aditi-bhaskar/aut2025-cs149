@@ -108,8 +108,11 @@ class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
         std::map<TaskID, LaunchInfo*> launches; 
         std::vector<TaskInfo> task_queue;
 
+        std::atomic<int> threads_ready_to_die{0};
+        std::atomic<bool> killing_threads{false};
+
         std::mutex taskMutex;
-        std::mutex launchMutex;
+        // std::mutex launchMutex;
 
         std::condition_variable cv;
 

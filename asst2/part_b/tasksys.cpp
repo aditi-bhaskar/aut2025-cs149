@@ -159,7 +159,7 @@ TaskSystemParallelThreadPoolSleeping::~TaskSystemParallelThreadPoolSleeping() {
     this->sync();
 
     // cv.notify_all();
-    // std::cout << "161 finished sync in destructor | " << n_launches_left << std::endl;
+    std::cout << "161 finished sync in destructor | " << n_launches_left << std::endl;
 
     threads_ready_to_die = 0;
     killing_threads = true;

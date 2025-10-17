@@ -159,17 +159,17 @@ TaskSystemParallelThreadPoolSleeping::~TaskSystemParallelThreadPoolSleeping() {
     this->sync();
 
     // cv.notify_all();
-    std::cout << "161 finished sync in destructor | " << n_launches_left << std::endl;
+    // std::cout << "161 finished sync in destructor | " << n_launches_left << std::endl;
 
     threads_ready_to_die = 0;
     killing_threads = true;
     while(n_launches_left != 0 || threads_ready_to_die < n_threads-1) { // aditi check
-        std::cout << "in destructor | n_launches_left " << n_launches_left << " | task_queue_empty " << task_queue.empty() << 
-        " | threads_ready_to_die " << threads_ready_to_die << " | n_threads-1 " << n_threads-1 << std::endl;
+        // std::cout << "in destructor | n_launches_left " << n_launches_left << " | task_queue_empty " << task_queue.empty() << 
+        // " | threads_ready_to_die " << threads_ready_to_die << " | n_threads-1 " << n_threads-1 << std::endl;
         cv.notify_all();
     }
     
-    std::cout << "in destructor | right before joining all threads together" << " | threads_ready_to_die " << threads_ready_to_die << " | n_threads-1 " << n_threads-1 << std::endl;
+    // std::cout << "in destructor | right before joining all threads together" << " | threads_ready_to_die " << threads_ready_to_die << " | n_threads-1 " << n_threads-1 << std::endl;
 
     for (int j=1; j< n_threads; j++) {
         workers[j].join();
@@ -222,17 +222,17 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
         if (n_launches_left <= 0 && task_queue.empty() && killing_threads) {
         // if (n_launches_left <= 0 && task_queue.empty()) {
             threads_ready_to_die += 1;
-            std::cout << "exiting sleepRunThread: v1" << std::endl;
+            // std::cout << "exiting sleepRunThread: v1" << std::endl;
             return; 
         }
 
         while (task_queue.empty()) {
-            std::cout << "spinning 222" << std::endl;
+            // std::cout << "spinning 222" << std::endl;
             cv.wait(lk);
             if (n_launches_left <= 0 && task_queue.empty() && killing_threads) { // aditi
             // if (n_launches_left <= 0 && task_queue.empty()) { // aditi
                 threads_ready_to_die += 1;
-                std::cout << "exiting sleepRunThread: v2" << std::endl;
+                // std::cout << "exiting sleepRunThread: v2" << std::endl;
                 return;   
             }
         }
@@ -243,17 +243,17 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
         task_queue.pop_back();
         lk.unlock();
         
-        std::cout << "running runnable 241 | launch " << task.id << " | task " << task.cur_id << " | thread " << thread_id << " | n_launches_left " << n_launches_left << std::endl;
+        // std::cout << "running runnable 241 | launch " << task.id << " | task " << task.cur_id << " | thread " << thread_id << " | n_launches_left " << n_launches_left << std::endl;
 
         task.task_runnable->runTask(task.cur_id, task.n_total_tasks);
 
-        std::cout << "done running | launch " << task.id << " | task " << task.cur_id << " | thread " << thread_id << " | n_launches_left " << n_launches_left << std::endl;
+        // std::cout << "done running | launch " << task.id << " | task " << task.cur_id << " | thread " << thread_id << " | n_launches_left " << n_launches_left << std::endl;
 
         // launchMutex.lock();
         lk.lock(); 
         launches[task.id]->remaining_tasks--; 
 
-        std::cout << "update | launch " << task.id << " | remaining " << launches[task.id]->remaining_tasks << " | n_launches_left " << n_launches_left << std::endl;
+        // std::cout << "update | launch " << task.id << " | remaining " << launches[task.id]->remaining_tasks << " | n_launches_left " << n_launches_left << std::endl;
 
         if (launches[task.id]->remaining_tasks == 0) { // aditi check
             std::vector<TaskID> children_list = launches[task.id]->children;
@@ -266,7 +266,7 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
             }
 
             n_launches_left--; 
-            std::cout << "decrementing " << n_launches_left << std::endl;
+            // std::cout << "decrementing " << n_launches_left << std::endl;
             lk.unlock();
 
             cv.notify_all();
@@ -277,7 +277,7 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
         // lk.unlock();
     }
 
-    std::cout << "exiting sleepRunThread" << std::endl;
+    // std::cout << "exiting sleepRunThread" << std::endl;
 }
 
 TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnable, int num_total_tasks,
@@ -338,7 +338,7 @@ void TaskSystemParallelThreadPoolSleeping::sync() {
 
     std::cout << "entering sync" << std::endl;
 
-    while(!task_queue.empty() || n_launches_left > 0) {
+    while((!task_queue.empty()) || n_launches_left > 0) {
         // std::cout << "spinning 326" << std::endl;
         // aditi todo
         std::cout << "in sync | n_launches_left " << n_launches_left << " | task_queue_empty " << task_queue.empty() << std::endl;

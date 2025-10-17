@@ -1,5 +1,6 @@
 #include "tasksys.h"
 #include <iostream>
+#include <unistd.h>
 
 IRunnable::~IRunnable() {}
 
@@ -158,7 +159,6 @@ TaskSystemParallelThreadPoolSleeping::~TaskSystemParallelThreadPoolSleeping() {
 
     this->sync();
 
-    // cv.notify_all();
     // std::cout << "161 finished sync in destructor | " << n_launches_left << std::endl;
 
     threads_ready_to_die = 0;
@@ -245,19 +245,18 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
         task_queue.pop_back();
         lk.unlock();
         
-        // std::cout << "running runnable 241 | launch " << task.id << " | task " << task.cur_id << " | thread " << thread_id << " | n_launches_left " << n_launches_left << std::endl;
+        // std::cout << "running runnable | launch " << task.id << " | task " << task.cur_id << " | thread " << thread_id << " | n_launches_left " << n_launches_left << std::endl;
 
         task.task_runnable->runTask(task.cur_id, task.n_total_tasks);
 
         // std::cout << "done running | launch " << task.id << " | task " << task.cur_id << " | thread " << thread_id << " | n_launches_left " << n_launches_left << std::endl;
 
-        // launchMutex.lock();
         lk.lock(); 
         launches[task.id]->remaining_tasks--; 
 
         // std::cout << "update | launch " << task.id << " | remaining " << launches[task.id]->remaining_tasks << " | n_launches_left " << n_launches_left << std::endl;
 
-        if (launches[task.id]->remaining_tasks == 0) { // aditi check
+        if (launches[task.id]->remaining_tasks <= 0) { // aditi check
             std::vector<TaskID> children_list = launches[task.id]->children;
             for (size_t i = 0; i < children_list.size(); i++) {
                 launches[children_list[i]]->n_parents--; 
@@ -268,15 +267,12 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
             }
 
             n_launches_left--; 
-            // std::cout << "decrementing " << n_launches_left << std::endl;
             lk.unlock();
-
             cv.notify_all();
         } 
         else {
             lk.unlock();
         }
-        // lk.unlock();
     }
 
     // std::cout << "exiting sleepRunThread" << std::endl;
@@ -287,6 +283,7 @@ TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnabl
     //
     // TODO: CS149 students will implement this method in Part B.
     //
+
     taskMutex.lock(); 
 
     int launch_id = max_launch_id++;
@@ -319,17 +316,11 @@ TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnabl
         this->addToTaskQueue(launch_info); 
         taskMutex.unlock(); 
         cv.notify_all(); 
-        // taskMutex.lock(); 
     } else {
         taskMutex.unlock(); // make sure to only unlock mutex once.
     }
 
-
-    // if (n_launches_left == 1) { // n_launches_left *was* zero, we just pushed a new launch
-    //     cv.notify_all(); 
-    // }
-
-    return 0;
+    return launch_id;
 }
 
 void TaskSystemParallelThreadPoolSleeping::sync() {

@@ -150,7 +150,8 @@ TaskSystemParallelThreadPoolSleeping::~TaskSystemParallelThreadPoolSleeping() {
     for (int j=1; j< n_threads; j++) {
         workers[j].join();
     }
-
+    
+    delete[] workers;
 }
 
 void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int num_total_tasks) {

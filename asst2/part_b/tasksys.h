@@ -106,7 +106,6 @@ class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
 
         std::atomic<int> max_launch_id{0};
         std::atomic<int> n_launches_left{0};
-
     
         std::unordered_map<int, LaunchInfo*> launches; // CHANGED: map->unordered map for O(1) lookup instead of O(logn)
         // std::map<TaskID, LaunchInfo*> launches; 

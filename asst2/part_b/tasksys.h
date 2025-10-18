@@ -106,7 +106,7 @@ class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
         std::atomic<int> n_launches_left{0};
 
         std::map<TaskID, LaunchInfo*> launches; 
-        std::vector<TaskInfo> task_queue;
+        std::vector<TaskInfo> task_queue; // change to queue for better runtime?
 
         std::atomic<int> threads_ready_to_die{0};
         std::atomic<bool> killing_threads{false};

@@ -314,7 +314,7 @@ TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnabl
     // if the launch has no dependencies, add to task queue 
     if (deps_left == 0) {
         this->addToTaskQueue(launch_info); 
-        taskMutex.unlock(); 
+        taskMutex.unlock();  // try flipping order of unlock/notify all to reduce runtime
         cv.notify_all(); 
     } else {
         taskMutex.unlock(); // make sure to only unlock mutex once.

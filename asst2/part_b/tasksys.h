@@ -8,6 +8,9 @@
 #include <condition_variable>
 #include <vector>
 #include <map>
+#include <unordered_map>
+#include <memory>
+
 
 /*
  * TaskSystemSerial: This class is the student's implementation of a
@@ -68,7 +71,6 @@ struct LaunchInfo {
 
     LaunchInfo(TaskID i, uint64_t n, uint64_t p, std::vector<TaskID> d, IRunnable *t):
         id(i), remaining_tasks(n), n_parents(p), children(d), task_runnable(t) {}
-        
 };
 
 struct TaskInfo {
@@ -105,8 +107,11 @@ class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
         std::atomic<int> max_launch_id{0};
         std::atomic<int> n_launches_left{0};
 
-        std::map<TaskID, LaunchInfo*> launches; 
-        std::vector<TaskInfo> task_queue; // change to queue for better runtime?
+    
+        std::unordered_map<int, LaunchInfo*> launches; // CHANGED: map->unordered map for O(1) lookup instead of O(logn)
+        // std::map<TaskID, LaunchInfo*> launches; 
+
+        std::vector<TaskInfo> task_queue; // note: queue gives worse runtime bc not contiguous in memory
 
         std::atomic<int> threads_ready_to_die{0};
         std::atomic<bool> killing_threads{false};

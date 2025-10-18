@@ -166,8 +166,9 @@ void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int num_tota
 void TaskSystemParallelThreadPoolSleeping::addToTaskQueue(LaunchInfo* launch) {
 
     for(size_t i = 0; i < launch->remaining_tasks; i++) {
-        TaskInfo* new_task_info = new TaskInfo(launch->id, launch->remaining_tasks, i, launch->task_runnable);
-        task_queue.push_back(*new_task_info); 
+        task_queue.emplace_back(launch->id, launch->remaining_tasks, i, launch->task_runnable); // CHANGED: don't allocate the task info struct every time!
+        // TaskInfo* new_task_info = new TaskInfo(launch->id, launch->remaining_tasks, i, launch->task_runnable);
+        // task_queue.push_back(*new_task_info); 
     }
 }
 
@@ -184,12 +185,11 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
 
         while (task_queue.empty()) {
             cv.wait(lk);
-            if (n_launches_left <= 0 && task_queue.empty() && killing_threads) { // aditi
+            if (n_launches_left <= 0 && task_queue.empty() && killing_threads) {
                 threads_ready_to_die += 1;
                 return;   
             }
         }
-
 
         // grab new task 
         TaskInfo task = task_queue.back(); 
@@ -201,7 +201,7 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
         lk.lock(); 
         launches[task.id]->remaining_tasks--; 
 
-        if (launches[task.id]->remaining_tasks <= 0) { // aditi check
+        if (launches[task.id]->remaining_tasks <= 0) { 
             std::vector<TaskID> children_list = launches[task.id]->children;
             for (size_t i = 0; i < children_list.size(); i++) {
                 launches[children_list[i]]->n_parents--; 

@@ -63,7 +63,6 @@ TaskSystemParallelSpawn::TaskSystemParallelSpawn(int num_threads): ITaskSystem(n
     //
 
     n_threads = num_threads; 
-    // n_threads = num_threads+1; 
 }
 
 TaskSystemParallelSpawn::~TaskSystemParallelSpawn() {}
@@ -161,7 +160,6 @@ TaskSystemParallelThreadPoolSpinning::TaskSystemParallelThreadPoolSpinning(int n
     // std::thread workers[num_threads];
 
     n_threads = num_threads; 
-    // n_threads = num_threads + 1; // +1 for the main thread too
     workers = new std::thread[n_threads];
 
     for (int j = 1; j < n_threads; j++) {
@@ -179,6 +177,8 @@ TaskSystemParallelThreadPoolSpinning::~TaskSystemParallelThreadPoolSpinning() {
     for (int j=1; j< n_threads; j++) {
         workers[j].join();
     }
+
+    delete[] workers;
 }
 
 void TaskSystemParallelThreadPoolSpinning::run(IRunnable* runnable, int n_total_tasks) {
@@ -242,7 +242,7 @@ TaskSystemParallelThreadPoolSleeping::TaskSystemParallelThreadPoolSleeping(int n
     // (requiring changes to tasksys.h).
     //
 
-    n_threads = num_threads + 1; 
+    n_threads = num_threads; 
     workers = new std::thread[n_threads];
 
     for (int j = 1; j < n_threads; j++) {
@@ -263,6 +263,8 @@ TaskSystemParallelThreadPoolSleeping::~TaskSystemParallelThreadPoolSleeping() {
     for (int j=1; j< n_threads; j++) {
         workers[j].join();
     }
+
+    delete[] workers;
 }
 
 void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {

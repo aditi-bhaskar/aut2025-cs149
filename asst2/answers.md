@@ -16,6 +16,18 @@ In order to track when a launch (and its tasks) can run, we maintain and decreme
 
 By maintaining a thread pool and a task pool in part B, we made it possible to run multiple tasks concurrently in the case that each launch could not (independently) make use of all the cores. (For instance, we have 8 cores and 3 launches with one task each; barring interdependencies, these tasks can be run concurrently). Maintaining the task pool also helped make the correctness of the code more straightforward -- initially, we found that running one launch after another required a lot of extra state and the code maintainability became difficult.
 
+We describe some more details for each method below. 
+
+`TaskSystemParallelSpawn`: Thread `i` is assigned task `i`, `i+n_threads`, i+2n_threads` and so on in a helper function, and each task is executed sequentially by the thread. We join all threads at the end. 
+
+`TaskSystemParallelThreadPoolSpinning`: We have a helper function `spinRunThread` that contains a `while(true)` loop. We keep track of the total number of tasks that have been completed as an atomic variable. When a thread grabs a new task, it updates this counter which we then use to check whether we can kill the threads. We kill the threads in the destructor when all tasks have been grabbed and each thread has finished executing and finally join the threads. 
+
+`TaskSystemParallelThreadPoolSleeping`: We adapt the prior method using a condition variable. When there are no more tasks to execute and a thread is waiting for other threads to finish, we use `cv.wait()` so the threads can sleep. 
+
+**async** `TaskSystemParallelThreadPoolSleeping`: Some more detail about how we track the dependencies is that every launch has a list of its children (what depends on it) and the number of parents. For each launch, we track how many remaining tasks there are. We also keep a task queue where each task contains a runnable function and its index. When a launch fully finishes (all the tasks are done), e.g. when its remaining count is zero, for each of its children, we decrease their `num_parents`. When a child has `num_parents == 0`, we can launch it and add all its tasks to the task queue (or when the run async function is called on a launch with no dependencies). Otherwise our worker function `sleepRunThread` is very similar to `TaskSystemParallelThreadPoolSleeping`. We know that we are done when the number of launches remaining (which we track) is zero and the task queue is empty. 
+
+The `sync()` function contains a while loop that continues until `n_launches_left` is 0 and the task queue is empty. 
+
 #### In Part A, you may have noticed that simpler task system implementations (e.g., a completely serial implementation, or the spawn threads every launch implementation), perform as well as or sometimes better than the more advanced implementations. Please explain why this is the case, citing certain tests as examples. For example, in what situations did the sequential task system implementation perform best? Why? In what situations did the spawn-every-launch implementation perform as well as the more advanced parallel implementations that use a thread pool? When does it not?
 
 The following results are written for 8 threads (1 + 7 worker threads) on AWS.
@@ -30,11 +42,11 @@ In some other tests, like `ping_pong_equal`, and both `math_operations_*`, we se
 
 #### Describe one test that you implemented for this assignment. What does the test do, what is it meant to check, and how did you verify that your solution to the assignment did well on your test? Did the result of the test you added cause you to change your assignment implementation?
 
-We created a test which adds 1 to 10000 array elements, and batches this into tasks of size 1-element with a small sleep, except for one task which processes a large chunk of the elements.
+We created a test which adds 1 to 10000 array elements, and batches this into tasks of size 1-element with a small sleep, except for one task which processes a large chunk of the elements (all the remaining elements).
 
 We tested correctness and runtime when the work was distributed unevenly, and was meant to especially test our work-stealing capabilities. Note that our `Always_Spawn` was implemented with static assignment, so it took longer than the thread pool methods -- likely because the threads didn't steal work! Our test result did not cause us to change our assignment implementation.
 
-We see that the parallelized task pool implementation does much better. Here are our performance results on Myth:
+We see that the parallelized task pool implementation does much better --- because threads can grab new tasks when they are finished (in this case this would be the single-element tasks). Here are our performance results on Myth:
 
 ```
 Sync, 8 threads ===================================================

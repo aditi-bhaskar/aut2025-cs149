@@ -18,21 +18,23 @@ By maintaining a thread pool and a task pool in part B, we made it possible to r
 
 #### In Part A, you may have noticed that simpler task system implementations (e.g., a completely serial implementation, or the spawn threads every launch implementation), perform as well as or sometimes better than the more advanced implementations. Please explain why this is the case, citing certain tests as examples. For example, in what situations did the sequential task system implementation perform best? Why? In what situations did the spawn-every-launch implementation perform as well as the more advanced parallel implementations that use a thread pool? When does it not?
 
-TODO
+The following results are written for 8 threads (1 + 7 worker threads) on AWS.
+
+For super_super_light, the serial implementation outperforms the spawn, spin, and sleep. This is because the test case completes data-copy tasks, which are quite small, so the bulk of the overhead comes from creating threads. We see in both our timing results and the results that Always Spawm is about 14x as slow as serial since new threads are spawned for each of the 400 tasks, and that creating each thread only once in Spin and Sleep gives a much slower, 2.5x runtime. 
+
+With super_light, the serial implementation (about 87ms) is about 6x slower than the two thread pool methods (about 13-14ms). This might be because there is more work being done in each task (the increment and the copy), and batching these sequential operations across threads gives greater benefit than the overhead of creating the threads. Always spawn is still over 1.5x the runtime, which means spawning a thread for every task still creates a huge overhead. 
+
+With recursive_fibonacci and spin_between_run_calls, we see the spawn_every_launch implementation approach the runtime of the two thread pool methods. In mandelbrot_chunked, we see spin_between_runs performs 2ms faster than the thread pool methods. This is because of the intensity of the computations, which makes the overhead of creating threads much less than the overhead of orchestrating the thread pool. 
+
+In some other tests, like ping_pong_equal, and both math_operations_*, we see the runtime of thread pool spin is less than thread pool sleep by about 10ms. We see this trend because sleeping often comes with an overhead of the condition variables.
 
 #### Describe one test that you implemented for this assignment. What does the test do, what is it meant to check, and how did you verify that your solution to the assignment did well on your test? Did the result of the test you added cause you to change your assignment implementation?
 
-We created a test which adds 1 to 10000 array elements, and batches this into tasks of size 1-element with a small sleep, except for one task which processes a large chunk of the elements. We see that the parallelized task pool implementation does much better.
+We created a test which adds 1 to 10000 array elements, and batches this into tasks of size 1-element with a small sleep, except for one task which processes a large chunk of the elements.
 
-Here are our performance results on Myth:
+We tested correctness and runtime when the work was distributed unevenly, and was meant to especially test our work-stealing capabilities. Note that our Always_Spawn was implemented with static assignment, so it took longer than the thread pool methods -- likely because the threads didn't steal work! Our test result did not cause us to change our assignment implementation.
 
-Async, 8 threads =================================================
-[Serial]:                                       [1236.144] ms
-[Parallel + Thread Pool + Sleep]:               [243.009] ms
-
-Async, 16 threads =================================================
-[Serial]:                                       [1241.754] ms
-[Parallel + Thread Pool + Sleep]:               [159.105] ms
+We see that the parallelized task pool implementation does much better. Here are our performance results on Myth:
 
 Sync, 8 threads ===================================================
 [Serial]:                                       [1053.168] ms
@@ -46,3 +48,10 @@ Sync, 16 threads ==================================================
 [Parallel + Thread Pool + Spin]:                [118.641] ms
 [Parallel + Thread Pool + Sleep]:               [134.640] ms
 
+Async, 8 threads =================================================
+[Serial]:                                       [1236.144] ms
+[Parallel + Thread Pool + Sleep]:               [243.009] ms
+
+Async, 16 threads =================================================
+[Serial]:                                       [1241.754] ms
+[Parallel + Thread Pool + Sleep]:               [159.105] ms

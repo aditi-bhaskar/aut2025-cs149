@@ -128,15 +128,6 @@ const char* TaskSystemParallelThreadPoolSleeping::name() {
 }
 
 TaskSystemParallelThreadPoolSleeping::TaskSystemParallelThreadPoolSleeping(int num_threads): ITaskSystem(num_threads) {
-    //
-    // TODO: CS149 student implementations may decide to perform setup
-    // operations (such as thread pool construction) here.
-    // Implementations are free to add new class member variables
-    // (requiring changes to tasksys.h).
-    //
-
-    // std::cout << "entering constructor" << std::endl;
-
     n_threads = num_threads; 
     workers = new std::thread[num_threads];
 
@@ -144,51 +135,25 @@ TaskSystemParallelThreadPoolSleeping::TaskSystemParallelThreadPoolSleeping(int n
         workers[j] = std::thread(&TaskSystemParallelThreadPoolSleeping::sleepRunThread, this, j);
     }
 
-    // std::cout << "exiting constructor" << std::endl;
 }
 
 TaskSystemParallelThreadPoolSleeping::~TaskSystemParallelThreadPoolSleeping() {
-    //
-    // TODO: CS149 student implementations may decide to perform cleanup
-    // operations (such as thread pool shutdown construction) here.
-    // Implementations are free to add new class member variables
-    // (requiring changes to tasksys.h).
-    //
-
-    // std::cout << "entering destructor" << std::endl;
 
     this->sync();
 
-    // std::cout << "161 finished sync in destructor | " << n_launches_left << std::endl;
-
     threads_ready_to_die = 0;
     killing_threads = true;
-    while(n_launches_left != 0 || threads_ready_to_die < n_threads-1) { // aditi check
-        // std::cout << "in destructor | n_launches_left " << n_launches_left << " | task_queue_empty " << task_queue.empty() << std::endl;
-        // " | threads_ready_to_die " << threads_ready_to_die << " | n_threads-1 " << n_threads-1 << std::endl;
+    while(n_launches_left != 0 || threads_ready_to_die < n_threads-1) { 
         cv.notify_all();
     }
-    
-    // std::cout << "in destructor | right before joining all threads together" << " | threads_ready_to_die " << threads_ready_to_die << " | n_threads-1 " << n_threads-1 << std::endl;
 
     for (int j=1; j< n_threads; j++) {
         workers[j].join();
     }
 
-    // std::cout << "exiting destructor" << std::endl;
-
 }
 
 void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int num_total_tasks) {
-
-    //
-    // TODO: CS149 students will modify the implementation of this
-    // method in Parts A and B.  The implementation provided below runs all
-    // tasks sequentially on the calling thread.
-    //
-
-    // std::cout << "entering run" << std::endl;
-
     this->sync();
 
     std::vector<TaskID> nodep = {};
@@ -196,16 +161,11 @@ void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int num_tota
 
     this->sync();
 
-    // std::cout << "exiting run" << std::endl;
-
 }
 
 void TaskSystemParallelThreadPoolSleeping::addToTaskQueue(LaunchInfo* launch) {
 
-    // std::cout << "entering addToTaskQueue" << std::endl;
-
     for(size_t i = 0; i < launch->remaining_tasks; i++) {
-        // std::cout << "203 " << launch->id << std::endl;
         TaskInfo* new_task_info = new TaskInfo(launch->id, launch->remaining_tasks, i, launch->task_runnable);
         task_queue.push_back(*new_task_info); 
     }
@@ -213,28 +173,19 @@ void TaskSystemParallelThreadPoolSleeping::addToTaskQueue(LaunchInfo* launch) {
 
 void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
 
-    // std::cout << "entering sleepRunThread" << std::endl;
-
     while(true) {
 
         std::unique_lock<std::mutex> lk(taskMutex);
 
-        // std::cout << "222" << std::endl;
-
         if (n_launches_left <= 0 && task_queue.empty() && killing_threads) {
-        // if (n_launches_left <= 0 && task_queue.empty()) {
             threads_ready_to_die += 1;
-            // std::cout << "exiting sleepRunThread: v1" << std::endl;
             return; 
         }
 
         while (task_queue.empty()) {
-            // std::cout << "spinning 222" << std::endl;
             cv.wait(lk);
             if (n_launches_left <= 0 && task_queue.empty() && killing_threads) { // aditi
-            // if (n_launches_left <= 0 && task_queue.empty()) { // aditi
                 threads_ready_to_die += 1;
-                // std::cout << "exiting sleepRunThread: v2" << std::endl;
                 return;   
             }
         }
@@ -245,16 +196,10 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
         task_queue.pop_back();
         lk.unlock();
         
-        // std::cout << "running runnable | launch " << task.id << " | task " << task.cur_id << " | thread " << thread_id << " | n_launches_left " << n_launches_left << std::endl;
-
         task.task_runnable->runTask(task.cur_id, task.n_total_tasks);
-
-        // std::cout << "done running | launch " << task.id << " | task " << task.cur_id << " | thread " << thread_id << " | n_launches_left " << n_launches_left << std::endl;
 
         lk.lock(); 
         launches[task.id]->remaining_tasks--; 
-
-        // std::cout << "update | launch " << task.id << " | remaining " << launches[task.id]->remaining_tasks << " | n_launches_left " << n_launches_left << std::endl;
 
         if (launches[task.id]->remaining_tasks <= 0) { // aditi check
             std::vector<TaskID> children_list = launches[task.id]->children;
@@ -274,16 +219,10 @@ void TaskSystemParallelThreadPoolSleeping::sleepRunThread(int thread_id) {
             lk.unlock();
         }
     }
-
-    // std::cout << "exiting sleepRunThread" << std::endl;
 }
 
 TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnable, int num_total_tasks,
                                                     const std::vector<TaskID>& deps) {
-    //
-    // TODO: CS149 students will implement this method in Part B.
-    //
-
     taskMutex.lock(); 
 
     int launch_id = max_launch_id++;
@@ -325,31 +264,16 @@ TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnabl
 
 void TaskSystemParallelThreadPoolSleeping::sync() {
 
-    //
-    // TODO: CS149 students will modify the implementation of this method in Part B.
-    //
-
-    // std::cout << "entering sync" << std::endl;
-
     taskMutex.lock();
     bool can_finish = (!task_queue.empty()) || n_launches_left > 0;
     taskMutex.unlock();
 
     while(can_finish) {
-        // std::cout << "spinning 326" << std::endl;
-        // aditi todo
-        // std::cout << "in sync | n_launches_left " << n_launches_left << " | task_queue_empty " << task_queue.empty() << std::endl;
         taskMutex.lock();
         can_finish = (!task_queue.empty()) || n_launches_left > 0;
         taskMutex.unlock();
     }
 
-    // std::cout << "exiting sync | n_launches_left " << n_launches_left << " | task_queue_empty " << task_queue.empty() << std::endl;
-
     return;
 }
 
-
-// lingering issues:
-//   1. when we get to in_sync and there are 2 launches left, but task queue is empty. suggests we dont add tasks onto queue in some situations, which is problematic
-//   2. [FIXED] we try to kill the threads before all are ready to die! 

@@ -112,7 +112,6 @@ class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
         std::atomic<bool> killing_threads{false};
 
         std::mutex taskMutex;
-        // std::mutex launchMutex;
 
         std::condition_variable cv;
 

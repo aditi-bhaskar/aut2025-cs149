@@ -27,6 +27,42 @@ static inline int nextPow2(int n) {
     return n;
 }
 
+__global__ void
+upsweep_kernel(int N, int two_dplus1, int two_d, int* input, int* result) {
+
+    // compute overall thread index from position of thread in current
+    // block, and given the block we are in (in this example only a 1D
+    // calculation is needed so the code only looks at the .x terms of
+    // blockDim and threadIdx.
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    index *= two_dplus1; 
+
+    // this check is necessary to make the code work for values of N
+    // that are not a multiple of the thread block size (blockDim.x)
+    if (index < N)
+        output[index+two_dplus1-1] += output[index+two_d-1];
+}
+
+__global__ void
+downsweep_kernel(int N, int two_dplus1, int two_d, int* input, int* result) {
+
+    // compute overall thread index from position of thread in current
+    // block, and given the block we are in (in this example only a 1D
+    // calculation is needed so the code only looks at the .x terms of
+    // blockDim and threadIdx.
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    index *= two_dplus1; 
+
+    // this check is necessary to make the code work for values of N
+    // that are not a multiple of the thread block size (blockDim.x)
+    if (index < N)
+    {
+        int t = output[index+two_d-1];
+        output[index+two_d-1] = output[index+two_dplus1-1];
+        output[index+two_dplus1-1] += t;
+    }
+}
+
 // exclusive_scan --
 //
 // Implementation of an exclusive scan on global memory array `input`,
@@ -54,9 +90,36 @@ void exclusive_scan(int* input, int N, int* result)
     // to CUDA kernel functions (that you must write) to implement the
     // scan.
 
+    const int blocks = (N + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+
+    int* device_input = nullptr;
+    int* device_result = nullptr;
+
+    cudaMalloc(&device_input, sizeof(int) * N); 
+    cudaMalloc(&device_result, sizeof(int) * N); 
+
+    cudaMemcpy(device_input, input, sizeof(int) * N, cudaMemcpyHostToDevice);
+
+    // upsweep phase
+    for (int two_d = 1; two_d <= N/2; two_d*=2) {
+        int two_dplus1 = 2*two_d;
+        upsweep_kernel<<<blocks / two_dplus1, THREADS_PER_BLOCK>>>(N, two_dplus1, two_d, device_input, device_result);
+    }
+
+    device_result[N-1] = 0;
+
+    // downsweep phase
+    for (int two_d = N/2; two_d >= 1; two_d /= 2) {
+        int two_dplus1 = 2*two_d;
+        downsweep_kernel<<<blocks / two_dplus1, THREADS_PER_BLOCK>>>(N, two_dplus1, two_d, device_input, device_result);
+    }
+
+    cudaMemcpy(device_result, result, sizeof(int) * N, cudaMemcpyDeviceToHost);
+
+    cudaFree(device_input);
+    cudaFree(device_result);
 
 }
-
 
 //
 // cudaScan --

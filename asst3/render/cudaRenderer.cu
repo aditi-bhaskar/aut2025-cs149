@@ -14,6 +14,9 @@
 #include "sceneLoader.h"
 #include "util.h"
 
+#define N_THREAD_X = 16
+#define N_THREAD_Y = 16
+
 ////////////////////////////////////////////////////////////////////////////////////////
 // Putting all the cuda kernels here
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -641,5 +644,93 @@ CudaRenderer::render() {
     dim3 gridDim((numCircles + blockDim.x - 1) / blockDim.x);
 
     kernelRenderCircles<<<gridDim, blockDim>>>();
+    cudaDeviceSynchronize();
+}
+
+
+// kernelRenderCircles -- (CUDA device code)
+//
+// Each thread renders a circle.  Since there is no protection to
+// ensure order of update or mutual exclusion on the output image, the
+// resulting image will be incorrect.
+__global__ void newKernelRenderCircles() {
+
+    short imageWidth = cuConstRendererParams.imageWidth;
+    short imageHeight = cuConstRendererParams.imageHeight;
+
+    int threadWidth = blockDim.x / N_THREAD_X;
+    int threadHeight = blockDim.y / N_THREAD_Y;
+
+    int xStart = blockIdx.x * blockDim.x + threadIdx.x * threadWidth; 
+    int yStart = blockIdx.y * blockDim.y + threadIdx.y * threadHeight; 
+
+    if (xStart >= imageWidth || yStart >= imageHeight)
+        return;
+
+    // compute all bounding boxes 
+
+    for (int circleIndex=0; circleIndex<cuConstRendererParams.numCircles; circleIndex++) {
+        int index3 = 3 * circleIndex;
+
+        float px = position[index3];
+        float py = position[index3+1];
+        float pz = position[index3+2];
+        float rad = radius[circleIndex];
+
+        // compute the bounding box of the circle.  This bounding box
+        // is in normalized coordinates
+        float minX = px - rad;
+        float maxX = px + rad;
+        float minY = py - rad;
+        float maxY = py + rad;
+
+        // convert normalized coordinate bounds to integer screen
+        // pixel bounds.  Clamp to the edges of the screen.
+        int screenMinX = CLAMP(static_cast<int>(minX * imageWidth), xStart, xStart + threadWidth);
+        int screenMaxX = CLAMP(static_cast<int>(maxX * imageWidth)+1, xStart, xStart + threadWidth);
+        int screenMinY = CLAMP(static_cast<int>(minY * imageHeight), yStart, yStart + threadHeight);
+        int screenMaxY = CLAMP(static_cast<int>(maxY * imageHeight)+1, yStart, yStart + threadHeight);
+
+        float invWidth = 1.f / imageWidth;
+        float invHeight = 1.f / imageHeight;
+
+        // for each pixel in the bounding box, determine the circle's
+        // contribution to the pixel.  The contribution is computed in
+        // the function shadePixel.  Since the circle does not fill
+        // the bounding box entirely, not every pixel in the box will
+        // receive contribution.
+        for (int pixelY=screenMinY; pixelY<screenMaxY; pixelY++) {
+
+            // pointer to pixel data
+            float* imgPtr = &cuConstRendererParams->imageData[4 * (pixelY * imageWidth + screenMinX)];
+
+            for (int pixelX=screenMinX; pixelX<screenMaxX; pixelX++) {
+
+                // When "shading" the pixel ("shading" = computing the
+                // circle's color and opacity at the pixel), we treat
+                // the pixel as a point at the center of the pixel.
+                // We'll compute the color of the circle at this
+                // point.  Note that shading math will occur in the
+                // normalized [0,1]^2 coordinate space, so we convert
+                // the pixel center into this coordinate space prior
+                // to calling shadePixel.
+                float pixelCenterNormX = invWidth * (static_cast<float>(pixelX) + 0.5f);
+                float pixelCenterNormY = invHeight * (static_cast<float>(pixelY) + 0.5f);
+                shadePixel(circleIndex, pixelCenterNormX, pixelCenterNormY, px, py, pz, imgPtr);
+                imgPtr += 4;
+            }
+        }
+    }
+
+}
+
+void
+CudaRenderer::newRender() {
+
+    // 256 threads per block is a healthy number
+    dim3 blockDim(N_THREAD_X, N_THREAD_Y);
+    dim3 gridDim((cuConstRendererParams.imageWidth / blockDim.x, cuConstRendererParams.imageHeight / blockDim.y))
+
+    newKernelRenderCircles<<<gridDim, blockDim>>>();
     cudaDeviceSynchronize();
 }

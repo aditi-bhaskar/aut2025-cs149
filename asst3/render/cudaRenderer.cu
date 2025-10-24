@@ -673,27 +673,11 @@ __global__ void newKernelRenderCircles() {
     for (int circleIndex=0; circleIndex<cuConstRendererParams.numCircles; circleIndex++) {
         int index3 = 3 * circleIndex;
 
-        // float px = cuConstRendererParams.position[index3];
-        // float py = cuConstRendererParams.position[index3+1];
-        // float pz = cuConstRendererParams.position[index3+2];
-        // float rad = cuConstRendererParams.radius[circleIndex];
 
         float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
         float  rad = cuConstRendererParams.radius[circleIndex];
 
-        // compute the bounding box of the circle.  This bounding box
-        // is in normalized coordinates
-        // float minX = p.x - rad;
-        // float maxX = p.x + rad;
-        // float minY = p.y - rad;
-        // float maxY = p.y + rad;
-
-        // convert normalized coordinate bounds to integer screen
-        // pixel bounds.  Clamp to the edges of the screen.
-        // int screenMinX = clamp(static_cast<int>(minX * imageWidth), xStart, xStart + threadWidth);
-        // int screenMaxX = clamp(static_cast<int>(maxX * imageWidth)+1, xStart, xStart + threadWidth);
-        // int screenMinY = clamp(static_cast<int>(minY * imageHeight), yStart, yStart + threadHeight);
-        // int screenMaxY = clamp(static_cast<int>(maxY * imageHeight)+1, yStart, yStart + threadHeight);
+        double kernel_start = CycleTimer::curentSeconds();
 
         short minX = static_cast<short>(imageWidth * (p.x - rad));
         short maxX = static_cast<short>(imageWidth * (p.x + rad)) + 1;
@@ -709,33 +693,11 @@ __global__ void newKernelRenderCircles() {
         float invWidth = 1.f / imageWidth;
         float invHeight = 1.f / imageHeight;
 
-        // for each pixel in the bounding box, determine the circle's
-        // contribution to the pixel.  The contribution is computed in
-        // the function shadePixel.  Since the circle does not fill
-        // the bounding box entirely, not every pixel in the box will
-        // receive contribution.
-        // for (int pixelY=screenMinY; pixelY<screenMaxY; pixelY++) {
+        double kernel_end = CycleTimer::curentSeconds();
 
-        //     // pointer to pixel data
-        //     // float* imgPtr = &cuConstRendererParams->imageData[4 * (pixelY * imageWidth + screenMinX)];
-        //     float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4 * (pixelY * imageWidth + screenMinX)]);
+        printf("time spent on bounding box %.3f\n", (kernel_end-kernel_start));
 
-        //     for (int pixelX=screenMinX; pixelX<screenMaxX; pixelX++) {
-
-        //         // When "shading" the pixel ("shading" = computing the
-        //         // circle's color and opacity at the pixel), we treat
-        //         // the pixel as a point at the center of the pixel.
-        //         // We'll compute the color of the circle at this
-        //         // point.  Note that shading math will occur in the
-        //         // normalized [0,1]^2 coordinate space, so we convert
-        //         // the pixel center into this coordinate space prior
-        //         // to calling shadePixel.
-        //         float pixelCenterNormX = invWidth * (static_cast<float>(pixelX) + 0.5f);
-        //         float pixelCenterNormY = invHeight * (static_cast<float>(pixelY) + 0.5f);
-        //         shadePixel(circleIndex, pixelCenterNormX, pixelCenterNormY, px, py, pz, imgPtr);
-        //         imgPtr += 4;
-        //     }
-        // }
+        kernel_start = CycleTimer::curentSeconds();
 
         for (int pixelY=screenMinY; pixelY<screenMaxY; pixelY++) {
             float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4 * (pixelY * imageWidth + screenMinX)]);
@@ -746,6 +708,10 @@ __global__ void newKernelRenderCircles() {
                 imgPtr++;
             }
         }
+
+        kernel_end = CycleTimer::curentSeconds();
+
+        printf("time spent on pixel shading: %.3f\n", (kernel_end-kernel_start));
     }
 
 }

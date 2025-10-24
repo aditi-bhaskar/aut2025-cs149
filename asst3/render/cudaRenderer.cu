@@ -719,6 +719,12 @@ __global__ void newKernelShadeCirclesParallel(int circle_bounding_boxes[][4]) {
         // a bunch of clamps.  Is there a CUDA built-in for this?
         int screenMinX = circle_bounding_boxes[circleIndex][0];
         int screenMaxX = circle_bounding_boxes[circleIndex][1];
+
+        if (xStart > screenMaxX || xStart + imageWidth < screenMinX)
+            continue; 
+        if (yStart > screenMaxY || yStart + imageWidth < screenMinY)
+            continue; 
+
         int screenMinY = circle_bounding_boxes[circleIndex][2];
         int screenMaxY = circle_bounding_boxes[circleIndex][3];
 

@@ -672,16 +672,19 @@ __global__ void newKernelComputeBBCirclesParallel(int *circle_bounding_boxes) {
 
         // clock_t kernel_start = clock(); 
 
+
+        short imageWidth = cuConstRendererParams.imageWidth;
+        short imageHeight = cuConstRendererParams.imageHeight;
         short minX = static_cast<short>(imageWidth * (p.x - rad));
         short maxX = static_cast<short>(imageWidth * (p.x + rad)) + 1;
         short minY = static_cast<short>(imageHeight * (p.y - rad));
         short maxY = static_cast<short>(imageHeight * (p.y + rad)) + 1;
 
         // a bunch of clamps.  Is there a CUDA built-in for this?
-        short screenMinX = (minX > xStart) ? ((minX < xStart + threadWidth) ? minX : xStart + threadWidth) : xStart;
-        short screenMaxX = (maxX > xStart) ? ((maxX < xStart + threadWidth) ? maxX : xStart + threadWidth) : xStart;
-        short screenMinY = (minY > yStart) ? ((minY < yStart + threadHeight) ? minY : yStart + threadHeight) : yStart;
-        short screenMaxY = (maxY > yStart) ? ((maxY < yStart + threadHeight) ? maxY : yStart + threadHeight) : yStart;
+        int screenMinX = (minX > 0) ? ((minX < imageWidth) ? minX : imageWidth) : 0;
+        int screenMaxX = (maxX > 0) ? ((maxX < imageWidth) ? maxX : imageWidth) : 0;
+        int screenMinY = (minY > 0) ? ((minY < imageHeight) ? minY : imageHeight) : 0;
+        int screenMaxY = (maxY > 0) ? ((maxY < imageHeight) ? maxY : imageHeight) : 0;
 
         // add screen info to the arr
         circle_bounding_boxes[circleIndex][0] = (int)screenMinX;

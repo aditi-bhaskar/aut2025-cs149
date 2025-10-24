@@ -684,10 +684,10 @@ __global__ void newKernelComputeBBCirclesParallel(int *circle_bounding_boxes) {
         short screenMaxY = (maxY > yStart) ? ((maxY < yStart + threadHeight) ? maxY : yStart + threadHeight) : yStart;
 
         // add screen info to the arr
-        circle_bounding_boxes[circleIndex][0] = screenMinX;
-        circle_bounding_boxes[circleIndex][1] = screenMaxX;
-        circle_bounding_boxes[circleIndex][2] = screenMinY;
-        circle_bounding_boxes[circleIndex][3] = screenMaxY;
+        circle_bounding_boxes[circleIndex][0] = (int)screenMinX;
+        circle_bounding_boxes[circleIndex][1] = (int)screenMaxX;
+        circle_bounding_boxes[circleIndex][2] = (int)screenMinY;
+        circle_bounding_boxes[circleIndex][3] = (int)screenMaxY;
 
         // clock_t kernel_end = clock(); 
 
@@ -720,10 +720,10 @@ __global__ void newKernelShadeCirclesParallel(int *circle_bounding_boxes) {
         float rad = cuConstRendererParams.radius[circleIndex];
 
         // a bunch of clamps.  Is there a CUDA built-in for this?
-        short screenMinX = circle_bounding_boxes[0];
-        short screenMaxX = circle_bounding_boxes[1];
-        short screenMinY = circle_bounding_boxes[2];
-        short screenMaxY = circle_bounding_boxes[3];
+        int screenMinX = circle_bounding_boxes[circleIndex][0];
+        int screenMaxX = circle_bounding_boxes[circleIndex][1];
+        int screenMinY = circle_bounding_boxes[circleIndex][2];
+        int screenMaxY = circle_bounding_boxes[circleIndex][3];
 
         float invWidth = 1.f / imageWidth;
         float invHeight = 1.f / imageHeight;
@@ -829,7 +829,7 @@ CudaRenderer::render() {
         image->height / blockDim.y); // cuConstRendererParams.imageHeight
 
     // Version 2
-    short circle_bounding_boxes[numCircles][4]; // todo should initialize this to 0's
+    int circle_bounding_boxes[numCircles][4]; // todo should initialize this to 0's
     newKernelComputeBBCirclesParallel<<<gridDim, blockDim>>>(&circle_bounding_boxes);
     newKernelShadeCirclesParallel<<<gridDim, blockDim>>>(&circle_bounding_boxes);
 

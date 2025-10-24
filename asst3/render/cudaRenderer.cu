@@ -829,7 +829,7 @@ CudaRenderer::render() {
         image->height / blockDim.y); // cuConstRendererParams.imageHeight
 
     // Version 2
-    int circle_bounding_boxes[cuConstRendererParams.numCircles][4]; // todo should initialize this to 0's
+    short circle_bounding_boxes[numCircles][4]; // todo should initialize this to 0's
     newKernelComputeBBCirclesParallel<<<gridDim, blockDim>>>(circle_bounding_boxes);
     newKernelShadeCirclesParallel<<<gridDim, blockDim>>>(circle_bounding_boxes);
 

@@ -781,7 +781,7 @@ __global__ void newKernelRenderCircles() {
         float  rad = cuConstRendererParams.radius[circleIndex];
 
         // double kernel_start = CycleTimer::currentSeconds();
-        clock_t kernel_start = clock(); 
+        // clock_t kernel_start = clock(); 
 
         short minX = static_cast<short>(imageWidth * (p.x - rad));
         short maxX = static_cast<short>(imageWidth * (p.x + rad)) + 1;
@@ -798,12 +798,12 @@ __global__ void newKernelRenderCircles() {
         float invHeight = 1.f / imageHeight;
 
         // double kernel_end = CycleTimer::currentSeconds();
-        clock_t kernel_end = clock(); 
+        // clock_t kernel_end = clock(); 
 
-        printf("time spent on bounding box %.3f\n", (kernel_end-kernel_start));
+        // printf("time spent on bounding box %.3f\n", (kernel_end-kernel_start));
 
         // kernel_start = CycleTimer::currentSeconds();
-        kernel_start = clock(); 
+        // kernel_start = clock(); 
 
         for (int pixelY=screenMinY; pixelY<screenMaxY; pixelY++) {
             float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4 * (pixelY * imageWidth + screenMinX)]);
@@ -816,9 +816,9 @@ __global__ void newKernelRenderCircles() {
         }
 
         // kernel_end = CycleTimer::currentSeconds();
-        kernel_end = clock(); 
+        // kernel_end = clock(); 
 
-        printf("time spent on pixel shading: %.3f\n", (kernel_end-kernel_start));
+        // printf("time spent on pixel shading: %.3f\n", (kernel_end-kernel_start));
     }
 
 }

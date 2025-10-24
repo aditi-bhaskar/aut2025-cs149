@@ -670,7 +670,7 @@ __global__ void newKernelComputeBBCirclesParallel(int circle_bounding_boxes) {
         float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
         float  rad = cuConstRendererParams.radius[circleIndex];
 
-        clock_t kernel_start = clock(); 
+        // clock_t kernel_start = clock(); 
 
         short minX = static_cast<short>(imageWidth * (p.x - rad));
         short maxX = static_cast<short>(imageWidth * (p.x + rad)) + 1;
@@ -689,7 +689,7 @@ __global__ void newKernelComputeBBCirclesParallel(int circle_bounding_boxes) {
         circle_bounding_boxes[circleIndex][2] = screenMinY;
         circle_bounding_boxes[circleIndex][3] = screenMaxY;
 
-        clock_t kernel_end = clock(); 
+        // clock_t kernel_end = clock(); 
 
         printf("time spent on bounding box %.3f\n", (kernel_end-kernel_start));
     }
@@ -728,9 +728,9 @@ __global__ void newKernelShadeCirclesParallel(int circle_bounding_boxes) {
         float invWidth = 1.f / imageWidth;
         float invHeight = 1.f / imageHeight;
 
-        clock_t kernel_end = clock(); 
+        // clock_t kernel_end = clock(); 
 
-        kernel_start = clock(); 
+        // kernel_start = clock(); 
 
         for (int pixelY=screenMinY; pixelY<screenMaxY; pixelY++) {
             float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4 * (pixelY * imageWidth + screenMinX)]);
@@ -742,7 +742,7 @@ __global__ void newKernelShadeCirclesParallel(int circle_bounding_boxes) {
             }
         }
 
-        kernel_end = clock(); 
+        // kernel_end = clock(); 
         printf("time spent on pixel shading: %.3f\n", (kernel_end-kernel_start));
     }
 

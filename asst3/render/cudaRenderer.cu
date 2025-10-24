@@ -7,6 +7,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <driver_functions.h>
+#include <device_launch_parameters.h>
 
 #include "cudaRenderer.h"
 #include "image.h"
@@ -743,8 +744,8 @@ CudaRenderer::render() {
 
     // 256 threads per block is a healthy number
     dim3 blockDim(N_THREAD_X, N_THREAD_Y);
-    dim3 gridDim(cuConstRendererParams.imageWidth / blockDim.x, 
-        cuConstRendererParams.imageHeight / blockDim.y);
+    dim3 gridDim(image->width / blockDim.x, 
+        image->height / blockDim.y); // cuConstRendererParams.imageHeight
 
     newKernelRenderCircles<<<gridDim, blockDim>>>();
     cudaDeviceSynchronize();

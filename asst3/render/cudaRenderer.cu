@@ -699,11 +699,11 @@ __global__ void newKernelShadeCirclesParallel(int circle_bounding_boxes[][4]) {
     short imageWidth = cuConstRendererParams.imageWidth;
     short imageHeight = cuConstRendererParams.imageHeight;
 
-    int threadWidth = blockDim2.x / N_THREAD_X;
-    int threadHeight = blockDim2.y / N_THREAD_Y;
+    int threadWidth = blockDim.x / N_THREAD_X;
+    int threadHeight = blockDim.y / N_THREAD_Y;
 
-    int xStart = blockIdx.x * blockDim2.x + threadIdx.x * threadWidth; 
-    int yStart = blockIdx.y * blockDim2.y + threadIdx.y * threadHeight; 
+    int xStart = blockIdx.x * blockDim.x + threadIdx.x * threadWidth; 
+    int yStart = blockIdx.y * blockDim.y + threadIdx.y * threadHeight; 
 
     if (xStart >= imageWidth || yStart >= imageHeight)
         return;

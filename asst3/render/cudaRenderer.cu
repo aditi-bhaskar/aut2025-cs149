@@ -682,10 +682,10 @@ __global__ void newKernelRenderCircles() {
 
         // compute the bounding box of the circle.  This bounding box
         // is in normalized coordinates
-        float minX = px - rad;
-        float maxX = px + rad;
-        float minY = py - rad;
-        float maxY = py + rad;
+        float minX = px[0] - rad;
+        float maxX = px[0] + rad;
+        float minY = py[1] - rad;
+        float maxY = py[1] + rad;
 
         // convert normalized coordinate bounds to integer screen
         // pixel bounds.  Clamp to the edges of the screen.
@@ -743,8 +743,8 @@ CudaRenderer::render() {
 
     // 256 threads per block is a healthy number
     dim3 blockDim(N_THREAD_X, N_THREAD_Y);
-    dim3 gridDim(cuConstRendererParams.imageWidth / blockDim.x, 
-        cuConstRendererParams.imageHeight / blockDim.y);
+    dim3 gridDim(imageWidth / blockDim.x, 
+        imageHeight / blockDim.y);
 
     newKernelRenderCircles<<<gridDim, blockDim>>>();
     cudaDeviceSynchronize();

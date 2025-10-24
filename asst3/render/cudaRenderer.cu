@@ -832,14 +832,14 @@ CudaRenderer::render() {
     cudaMalloc(&circle_bounding_boxes_device, numCircles * 4 * sizeof(int));
     cudaMemcpy(circle_bounding_boxes_device, circle_bounding_boxes, numCircles * 4 * sizeof(int), cudaMemcpyHostToDevice);
 
-    dim3 blockDim(256, 1);
-    dim3 gridDim((numCircles + blockDim.x - 1) / blockDim.x);
-    newKernelComputeBBCirclesParallel<<<gridDim, blockDim>>>(circle_bounding_boxes_device);
+    dim3 blockDim1(256, 1);
+    dim3 gridDim1((numCircles + blockDim1.x - 1) / blockDim1.x);
+    newKernelComputeBBCirclesParallel<<<gridDim1, blockDim1>>>(circle_bounding_boxes_device);
 
-    blockDim(N_THREAD_X, N_THREAD_Y);
-    gridDim(image->width / blockDim.x, 
-        image->height / blockDim.y); // cuConstRendererParams.imageHeight  
-    newKernelShadeCirclesParallel<<<gridDim, blockDim>>>(circle_bounding_boxes_device);
+    dim3 blockDim2(N_THREAD_X, N_THREAD_Y);
+    dim3 gridDim2(image->width / blockDim.x, 
+        image->height / blockDim2.y); // cuConstRendererParams.imageHeight  
+    newKernelShadeCirclesParallel<<<gridDim2, blockDim2>>>(circle_bounding_boxes_device);
 
     // Version 1
     // newKernelRenderCircles<<<gridDim, blockDim>>>();

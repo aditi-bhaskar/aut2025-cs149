@@ -700,7 +700,7 @@ __global__ void newKernelComputeBBCirclesParallel(int circle_bounding_boxes[][4]
 }
 
 
-__global__ void newKernelShadeCirclesParallel(int *circle_bounding_boxes) {
+__global__ void newKernelShadeCirclesParallel(int &circle_bounding_boxes) {
 
     short imageWidth = cuConstRendererParams.imageWidth;
     short imageHeight = cuConstRendererParams.imageHeight;

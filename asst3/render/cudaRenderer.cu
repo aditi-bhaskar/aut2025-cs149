@@ -654,9 +654,6 @@ CudaRenderer::oldrender() {
 // computes circle bounding boxes in parallel
 __global__ void newKernelComputeBBCirclesParallel(int circle_bounding_boxes[][4]) {
 
-    short imageWidth = cuConstRendererParams.imageWidth;
-    short imageHeight = cuConstRendererParams.imageHeight;
-
     int index = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (index >= cuConstRendererParams.numCircles)
@@ -685,10 +682,10 @@ __global__ void newKernelComputeBBCirclesParallel(int circle_bounding_boxes[][4]
     int screenMaxY = (maxY > 0) ? ((maxY < imageHeight) ? maxY : imageHeight) : 0;
 
     // add screen info to the arr
-    circle_bounding_boxes[circleIndex][0] = (int)screenMinX;
-    circle_bounding_boxes[circleIndex][1] = (int)screenMaxX;
-    circle_bounding_boxes[circleIndex][2] = (int)screenMinY;
-    circle_bounding_boxes[circleIndex][3] = (int)screenMaxY;
+    circle_bounding_boxes[index][0] = (int)screenMinX;
+    circle_bounding_boxes[index][1] = (int)screenMaxX;
+    circle_bounding_boxes[index][2] = (int)screenMinY;
+    circle_bounding_boxes[index][3] = (int)screenMaxY;
 
     // clock_t kernel_end = clock(); 
 
@@ -839,8 +836,8 @@ CudaRenderer::render() {
     dim3 gridDim((numCircles + blockDim.x - 1) / blockDim.x);
     newKernelComputeBBCirclesParallel<<<gridDim, blockDim>>>(circle_bounding_boxes_device);
 
-    dim3 blockDim(N_THREAD_X, N_THREAD_Y);
-    dim3 gridDim(image->width / blockDim.x, 
+    blockDim(N_THREAD_X, N_THREAD_Y);
+    gridDim(image->width / blockDim.x, 
         image->height / blockDim.y); // cuConstRendererParams.imageHeight  
     newKernelShadeCirclesParallel<<<gridDim, blockDim>>>(circle_bounding_boxes_device);
 

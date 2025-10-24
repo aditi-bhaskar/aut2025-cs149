@@ -722,11 +722,12 @@ __global__ void newKernelShadeCirclesParallel(int circle_bounding_boxes[][4]) {
 
         if (xStart > screenMaxX || xStart + imageWidth < screenMinX)
             continue; 
-        if (yStart > screenMaxY || yStart + imageWidth < screenMinY)
-            continue; 
 
         int screenMinY = circle_bounding_boxes[circleIndex][2];
         int screenMaxY = circle_bounding_boxes[circleIndex][3];
+
+        if (yStart > screenMaxY || yStart + imageWidth < screenMinY)
+            continue; 
 
         float invWidth = 1.f / imageWidth;
         float invHeight = 1.f / imageHeight;

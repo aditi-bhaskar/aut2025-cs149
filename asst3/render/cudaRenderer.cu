@@ -14,6 +14,7 @@
 #include "noise.h"
 #include "sceneLoader.h"
 #include "util.h"
+#include "CycleTimer.h"
 
 #define N_THREAD_X 16
 #define N_THREAD_Y 16

@@ -652,7 +652,7 @@ CudaRenderer::oldrender() {
 }
 
 // computes circle bounding boxes in parallel
-__global__ void newKernelComputeBBCirclesParallel(int *circle_bounding_boxes) {
+__global__ void newKernelComputeBBCirclesParallel(int &circle_bounding_boxes) {
 
     short imageWidth = cuConstRendererParams.imageWidth;
     short imageHeight = cuConstRendererParams.imageHeight;
@@ -700,7 +700,7 @@ __global__ void newKernelComputeBBCirclesParallel(int *circle_bounding_boxes) {
 }
 
 
-__global__ void newKernelShadeCirclesParallel(int *circle_bounding_boxes) {
+__global__ void newKernelShadeCirclesParallel(int &circle_bounding_boxes) {
 
     short imageWidth = cuConstRendererParams.imageWidth;
     short imageHeight = cuConstRendererParams.imageHeight;

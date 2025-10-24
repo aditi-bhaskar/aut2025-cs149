@@ -652,7 +652,7 @@ CudaRenderer::oldrender() {
 }
 
 // computes circle bounding boxes in parallel
-__global__ void newKernelComputeBBCirclesParallel(int *circle_bounding_boxes) {
+__global__ void newKernelComputeBBCirclesParallel(int circle_bounding_boxes[][4]) {
 
     short imageWidth = cuConstRendererParams.imageWidth;
     short imageHeight = cuConstRendererParams.imageHeight;
@@ -833,8 +833,13 @@ CudaRenderer::render() {
 
     // Version 2
     int circle_bounding_boxes[numCircles][4]; // todo should initialize this to 0's
-    newKernelComputeBBCirclesParallel<<<gridDim, blockDim>>>(&circle_bounding_boxes);
-    newKernelShadeCirclesParallel<<<gridDim, blockDim>>>(&circle_bounding_boxes);
+
+    int (*circle_bounding_boxes_device)[4];
+    cudaMalloc(&circle_bounding_boxes_device, numCircles * 4 * sizeof(int));
+    cudaMemcpy(circle_bounding_boxes_device, circle_bounding_boxes, numCircles * 4 * sizeof(int), cudaMemcpyHostToDevice);
+
+    newKernelComputeBBCirclesParallel<<<gridDim, blockDim>>>(&circle_bounding_boxes_device);
+    newKernelShadeCirclesParallel<<<gridDim, blockDim>>>(&circle_bounding_boxes_device);
 
     // Version 1
     // newKernelRenderCircles<<<gridDim, blockDim>>>();

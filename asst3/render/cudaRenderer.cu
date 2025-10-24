@@ -700,7 +700,7 @@ __global__ void newKernelComputeBBCirclesParallel(int circle_bounding_boxes[][4]
 }
 
 
-__global__ void newKernelShadeCirclesParallel(int &circle_bounding_boxes) {
+__global__ void newKernelShadeCirclesParallel(int circle_bounding_boxes[][4]) {
 
     short imageWidth = cuConstRendererParams.imageWidth;
     short imageHeight = cuConstRendererParams.imageHeight;
@@ -838,8 +838,8 @@ CudaRenderer::render() {
     cudaMalloc(&circle_bounding_boxes_device, numCircles * 4 * sizeof(int));
     cudaMemcpy(circle_bounding_boxes_device, circle_bounding_boxes, numCircles * 4 * sizeof(int), cudaMemcpyHostToDevice);
 
-    newKernelComputeBBCirclesParallel<<<gridDim, blockDim>>>(&circle_bounding_boxes_device);
-    newKernelShadeCirclesParallel<<<gridDim, blockDim>>>(&circle_bounding_boxes_device);
+    newKernelComputeBBCirclesParallel<<<gridDim, blockDim>>>(circle_bounding_boxes_device);
+    newKernelShadeCirclesParallel<<<gridDim, blockDim>>>(circle_bounding_boxes_device);
 
     // Version 1
     // newKernelRenderCircles<<<gridDim, blockDim>>>();

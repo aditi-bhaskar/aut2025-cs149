@@ -664,7 +664,7 @@ __global__ void newKernelComputeBBCirclesParallel(int *circle_bounding_boxes) {
     if (start >= imageWidth)
         return;
 
-    for (int circleIndex = start; circleIndex < num_circles_per_thread; circle_index++) {
+    for (int circleIndex = start; circleIndex < num_circles_per_thread; circleIndex++) {
         int index3 = 3 * circleIndex;
 
         float3 p = *(float3*)(&cuConstRendererParams.position[index3]);

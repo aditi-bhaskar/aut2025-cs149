@@ -109,10 +109,11 @@ void saxpyCuda(int N, float alpha, float* xarray, float* yarray, float* resultar
     //
     cudaMemcpy(resultarray, device_result, sizeof(float) * N, cudaMemcpyDeviceToHost);
 
-    cout << xarray[0] << endl;
-    cout << yarray[0] << endl;
-    cout << alpha << endl;
-    cout << resultarray[0] << endl;
+    printf("%.3f", xarray[0]);
+    printf("%.3f", yarray[0]);
+    printf("%.3f", alpha);
+    printf("%.3f", resultarray[0]);
+
 
     
     // end timing after result has been copied back into host memory

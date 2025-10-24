@@ -699,25 +699,36 @@ __global__ void newKernelRenderCircles() {
         // the function shadePixel.  Since the circle does not fill
         // the bounding box entirely, not every pixel in the box will
         // receive contribution.
+        // for (int pixelY=screenMinY; pixelY<screenMaxY; pixelY++) {
+
+        //     // pointer to pixel data
+        //     // float* imgPtr = &cuConstRendererParams->imageData[4 * (pixelY * imageWidth + screenMinX)];
+        //     float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4 * (pixelY * imageWidth + screenMinX)]);
+
+        //     for (int pixelX=screenMinX; pixelX<screenMaxX; pixelX++) {
+
+        //         // When "shading" the pixel ("shading" = computing the
+        //         // circle's color and opacity at the pixel), we treat
+        //         // the pixel as a point at the center of the pixel.
+        //         // We'll compute the color of the circle at this
+        //         // point.  Note that shading math will occur in the
+        //         // normalized [0,1]^2 coordinate space, so we convert
+        //         // the pixel center into this coordinate space prior
+        //         // to calling shadePixel.
+        //         float pixelCenterNormX = invWidth * (static_cast<float>(pixelX) + 0.5f);
+        //         float pixelCenterNormY = invHeight * (static_cast<float>(pixelY) + 0.5f);
+        //         shadePixel(circleIndex, pixelCenterNormX, pixelCenterNormY, px, py, pz, imgPtr);
+        //         imgPtr += 4;
+        //     }
+        // }
+
         for (int pixelY=screenMinY; pixelY<screenMaxY; pixelY++) {
-
-            // pointer to pixel data
-            float* imgPtr = &cuConstRendererParams->imageData[4 * (pixelY * imageWidth + screenMinX)];
-
+            float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4 * (pixelY * imageWidth + screenMinX)]);
             for (int pixelX=screenMinX; pixelX<screenMaxX; pixelX++) {
-
-                // When "shading" the pixel ("shading" = computing the
-                // circle's color and opacity at the pixel), we treat
-                // the pixel as a point at the center of the pixel.
-                // We'll compute the color of the circle at this
-                // point.  Note that shading math will occur in the
-                // normalized [0,1]^2 coordinate space, so we convert
-                // the pixel center into this coordinate space prior
-                // to calling shadePixel.
-                float pixelCenterNormX = invWidth * (static_cast<float>(pixelX) + 0.5f);
-                float pixelCenterNormY = invHeight * (static_cast<float>(pixelY) + 0.5f);
-                shadePixel(circleIndex, pixelCenterNormX, pixelCenterNormY, px, py, pz, imgPtr);
-                imgPtr += 4;
+                float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
+                                                    invHeight * (static_cast<float>(pixelY) + 0.5f));
+                shadePixel(index, pixelCenterNorm, p, imgPtr);
+                imgPtr++;
             }
         }
     }

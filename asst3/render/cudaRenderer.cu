@@ -654,7 +654,7 @@ CudaRenderer::oldrender() {
 // computes circle bounding boxes in parallel
 __global__ void newKernelComputeBBCirclesParallel(int circle_bounding_boxes[][4]) {
 
-    int index = blockIdx.x * blockDim1.x + threadIdx.x;
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (index >= cuConstRendererParams.numCircles)
         return;

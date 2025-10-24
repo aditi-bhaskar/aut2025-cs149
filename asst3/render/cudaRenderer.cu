@@ -837,7 +837,7 @@ CudaRenderer::render() {
     newKernelComputeBBCirclesParallel<<<gridDim1, blockDim1>>>(circle_bounding_boxes_device);
 
     dim3 blockDim2(N_THREAD_X, N_THREAD_Y);
-    dim3 gridDim2(image->width / blockDim.x, 
+    dim3 gridDim2(image->width / blockDim2.x, 
         image->height / blockDim2.y); // cuConstRendererParams.imageHeight  
     newKernelShadeCirclesParallel<<<gridDim2, blockDim2>>>(circle_bounding_boxes_device);
 

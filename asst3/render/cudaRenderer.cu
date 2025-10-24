@@ -683,17 +683,28 @@ __global__ void newKernelRenderCircles() {
 
         // compute the bounding box of the circle.  This bounding box
         // is in normalized coordinates
-        float minX = p.x - rad;
-        float maxX = p.x + rad;
-        float minY = p.y - rad;
-        float maxY = p.y + rad;
+        // float minX = p.x - rad;
+        // float maxX = p.x + rad;
+        // float minY = p.y - rad;
+        // float maxY = p.y + rad;
 
         // convert normalized coordinate bounds to integer screen
         // pixel bounds.  Clamp to the edges of the screen.
-        int screenMinX = clamp(static_cast<int>(minX * imageWidth), xStart, xStart + threadWidth);
-        int screenMaxX = clamp(static_cast<int>(maxX * imageWidth)+1, xStart, xStart + threadWidth);
-        int screenMinY = clamp(static_cast<int>(minY * imageHeight), yStart, yStart + threadHeight);
-        int screenMaxY = clamp(static_cast<int>(maxY * imageHeight)+1, yStart, yStart + threadHeight);
+        // int screenMinX = clamp(static_cast<int>(minX * imageWidth), xStart, xStart + threadWidth);
+        // int screenMaxX = clamp(static_cast<int>(maxX * imageWidth)+1, xStart, xStart + threadWidth);
+        // int screenMinY = clamp(static_cast<int>(minY * imageHeight), yStart, yStart + threadHeight);
+        // int screenMaxY = clamp(static_cast<int>(maxY * imageHeight)+1, yStart, yStart + threadHeight);
+
+        short minX = static_cast<short>(imageWidth * (p.x - rad));
+        short maxX = static_cast<short>(imageWidth * (p.x + rad)) + 1;
+        short minY = static_cast<short>(imageHeight * (p.y - rad));
+        short maxY = static_cast<short>(imageHeight * (p.y + rad)) + 1;
+
+        // a bunch of clamps.  Is there a CUDA built-in for this?
+        short screenMinX = (minX > xStart) ? ((minX < xStart + threadWidth) ? minX : xStart + threadWidth) : xStart;
+        short screenMaxX = (maxX > xStart) ? ((maxX < xStart + threadWidth) ? maxX : xStart + threadWidth) : xStart;
+        short screenMinY = (minY > yStart) ? ((minY < yStart + threadHeight) ? minY : yStart + threadHeight) : yStart;
+        short screenMaxY = (maxY > yStart) ? ((maxY < yStart + threadHeight) ? maxY : yStart + threadHeight) : yStart;
 
         float invWidth = 1.f / imageWidth;
         float invHeight = 1.f / imageHeight;

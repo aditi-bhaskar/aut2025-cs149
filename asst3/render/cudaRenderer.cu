@@ -689,10 +689,10 @@ __global__ void newKernelRenderCircles() {
 
         // convert normalized coordinate bounds to integer screen
         // pixel bounds.  Clamp to the edges of the screen.
-        int screenMinX = CLAMP(static_cast<int>(minX * imageWidth), xStart, xStart + threadWidth);
-        int screenMaxX = CLAMP(static_cast<int>(maxX * imageWidth)+1, xStart, xStart + threadWidth);
-        int screenMinY = CLAMP(static_cast<int>(minY * imageHeight), yStart, yStart + threadHeight);
-        int screenMaxY = CLAMP(static_cast<int>(maxY * imageHeight)+1, yStart, yStart + threadHeight);
+        int screenMinX = clamp(static_cast<int>(minX * imageWidth), xStart, xStart + threadWidth);
+        int screenMaxX = clamp(static_cast<int>(maxX * imageWidth)+1, xStart, xStart + threadWidth);
+        int screenMinY = clamp(static_cast<int>(minY * imageHeight), yStart, yStart + threadHeight);
+        int screenMaxY = clamp(static_cast<int>(maxY * imageHeight)+1, yStart, yStart + threadHeight);
 
         float invWidth = 1.f / imageWidth;
         float invHeight = 1.f / imageHeight;

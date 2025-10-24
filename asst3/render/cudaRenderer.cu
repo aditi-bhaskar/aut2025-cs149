@@ -14,8 +14,8 @@
 #include "sceneLoader.h"
 #include "util.h"
 
-#define N_THREAD_X = 16
-#define N_THREAD_Y = 16
+#define N_THREAD_X 16
+#define N_THREAD_Y 16
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // Putting all the cuda kernels here
@@ -637,7 +637,7 @@ CudaRenderer::advanceAnimation() {
 }
 
 void
-CudaRenderer::render() {
+CudaRenderer::oldrender() {
 
     // 256 threads per block is a healthy number
     dim3 blockDim(256, 1);
@@ -672,10 +672,10 @@ __global__ void newKernelRenderCircles() {
     for (int circleIndex=0; circleIndex<cuConstRendererParams.numCircles; circleIndex++) {
         int index3 = 3 * circleIndex;
 
-        float px = position[index3];
-        float py = position[index3+1];
-        float pz = position[index3+2];
-        float rad = radius[circleIndex];
+        float px = cuConstRendererParams.position[index3];
+        float py = cuConstRendererParams.position[index3+1];
+        float pz = cuConstRendererParams.position[index3+2];
+        float rad = cuConstRendererParams.radius[circleIndex];
 
         // compute the bounding box of the circle.  This bounding box
         // is in normalized coordinates
@@ -725,11 +725,11 @@ __global__ void newKernelRenderCircles() {
 }
 
 void
-CudaRenderer::newRender() {
+CudaRenderer::render() {
 
     // 256 threads per block is a healthy number
     dim3 blockDim(N_THREAD_X, N_THREAD_Y);
-    dim3 gridDim((cuConstRendererParams.imageWidth / blockDim.x, cuConstRendererParams.imageHeight / blockDim.y))
+    dim3 gridDim((cuConstRendererParams.imageWidth / blockDim.x, cuConstRendererParams.imageHeight / blockDim.y));
 
     newKernelRenderCircles<<<gridDim, blockDim>>>();
     cudaDeviceSynchronize();

@@ -682,10 +682,10 @@ __global__ void newKernelRenderCircles() {
 
         // compute the bounding box of the circle.  This bounding box
         // is in normalized coordinates
-        float minX = p[0] - rad;
-        float maxX = p[0] + rad;
-        float minY = p[1] - rad;
-        float maxY = p[1] + rad;
+        float minX = p.x - rad;
+        float maxX = p.x + rad;
+        float minY = p.y - rad;
+        float maxY = p.y + rad;
 
         // convert normalized coordinate bounds to integer screen
         // pixel bounds.  Clamp to the edges of the screen.

@@ -664,7 +664,7 @@ __global__ void newKernelComputeBBCirclesParallel(int *circle_bounding_boxes) {
     if (start >= imageWidth)
         return;
 
-    for (int circleIndex = start; circleIndex < num_circles_per_thread; circle_index++) {
+    for (int circleIndex = start; circleIndex < num_circles_per_thread; circleIndex++) {
         int index3 = 3 * circleIndex;
 
         float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
@@ -694,7 +694,7 @@ __global__ void newKernelComputeBBCirclesParallel(int *circle_bounding_boxes) {
 
         // clock_t kernel_end = clock(); 
 
-        printf("time spent on bounding box %.3f\n", (kernel_end-kernel_start));
+        // printf("time spent on bounding box %.3f\n", (kernel_end-kernel_start));
     }
 
 }
@@ -746,7 +746,7 @@ __global__ void newKernelShadeCirclesParallel(int *circle_bounding_boxes) {
         }
 
         // kernel_end = clock(); 
-        printf("time spent on pixel shading: %.3f\n", (kernel_end-kernel_start));
+        // printf("time spent on pixel shading: %.3f\n", (kernel_end-kernel_start));
     }
 
 }

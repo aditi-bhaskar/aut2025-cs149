@@ -859,17 +859,17 @@ CudaRenderer::render() {
     //     image->height / blockDim.y); // cuConstRendererParams.imageHeight
 
     // Version 2 (Oct 24, 25)
-    short circle_bounding_boxes[numCircles][4]; // todo should initialize this to 0's
+    short circle_bounding_boxes[MAX_CIRCLES_AT_ONCE][4]; // todo should initialize this to 0's
 
     short (*circle_bounding_boxes_device)[4];
-    cudaMalloc(&circle_bounding_boxes_device, numCircles * 4 * sizeof(short));
-    cudaMemcpy(circle_bounding_boxes_device, circle_bounding_boxes, numCircles * 4 * sizeof(short), cudaMemcpyHostToDevice);
+    cudaMalloc(&circle_bounding_boxes_device, MAX_CIRCLES_AT_ONCE * 4 * sizeof(short));
+    cudaMemcpy(circle_bounding_boxes_device, circle_bounding_boxes, MAX_CIRCLES_AT_ONCE * 4 * sizeof(short), cudaMemcpyHostToDevice);
 
     short num_circles_batches = (numCircles + MAX_CIRCLES_AT_ONCE - 1) / MAX_CIRCLES_AT_ONCE;
 
-    for (short circle_batch = 0; circle_batch < num_circles_batches; num_circles_batches++) {
+    for (short circle_batch = 0; circle_batch < num_circles_batches; circle_batch++) {
 
-        int start_circle_index = num_circles_batches * MAX_CIRCLES_AT_ONCE; 
+        int start_circle_index = circle_batch * MAX_CIRCLES_AT_ONCE; 
 
         dim3 blockDim1(N_THREAD, 1);
         dim3 gridDim1((numCircles + blockDim1.x - 1) / blockDim1.x);

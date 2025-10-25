@@ -654,7 +654,7 @@ CudaRenderer::oldrender() {
 }
 
 // computes circle bounding boxes in parallel
-__global__ void newKernelComputeBBCirclesParallel(int circle_bounding_boxes[][4]) {
+__global__ void newKernelComputeBBCirclesParallel(short circle_bounding_boxes[][4]) {
 
     int index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -677,16 +677,16 @@ __global__ void newKernelComputeBBCirclesParallel(int circle_bounding_boxes[][4]
     short maxY = static_cast<short>(imageHeight * (p.y + rad)) + 1;
 
     // a bunch of clamps.  Is there a CUDA built-in for this?
-    int screenMinX = (minX > 0) ? ((minX < imageWidth) ? minX : imageWidth) : 0;
-    int screenMaxX = (maxX > 0) ? ((maxX < imageWidth) ? maxX : imageWidth) : 0;
-    int screenMinY = (minY > 0) ? ((minY < imageHeight) ? minY : imageHeight) : 0;
-    int screenMaxY = (maxY > 0) ? ((maxY < imageHeight) ? maxY : imageHeight) : 0;
+    short screenMinX = (minX > 0) ? ((minX < imageWidth) ? minX : imageWidth) : 0;
+    short screenMaxX = (maxX > 0) ? ((maxX < imageWidth) ? maxX : imageWidth) : 0;
+    short screenMinY = (minY > 0) ? ((minY < imageHeight) ? minY : imageHeight) : 0;
+    short screenMaxY = (maxY > 0) ? ((maxY < imageHeight) ? maxY : imageHeight) : 0;
 
     // add screen info to the arr
-    circle_bounding_boxes[index][0] = (int)screenMinX;
-    circle_bounding_boxes[index][1] = (int)screenMaxX;
-    circle_bounding_boxes[index][2] = (int)screenMinY;
-    circle_bounding_boxes[index][3] = (int)screenMaxY;
+    circle_bounding_boxes[index][0] = (short)screenMinX;
+    circle_bounding_boxes[index][1] = (short)screenMaxX;
+    circle_bounding_boxes[index][2] = (short)screenMinY;
+    circle_bounding_boxes[index][3] = (short)screenMaxY;
 
     // if (index==3) {        
     // printf("values in cbb, compute bb: %d, %d, %d, %d\n", circle_bounding_boxes[index][0], circle_bounding_boxes[index][1], circle_bounding_boxes[index][2], circle_bounding_boxes[index][3]);
@@ -698,7 +698,7 @@ __global__ void newKernelComputeBBCirclesParallel(int circle_bounding_boxes[][4]
 }
 
 
-__global__ void newKernelShadeCirclesParallel(int circle_bounding_boxes[][4]) {
+__global__ void newKernelShadeCirclesParallel(short circle_bounding_boxes[][4]) {
 
     short imageWidth = cuConstRendererParams.imageWidth;
     short imageHeight = cuConstRendererParams.imageHeight;
@@ -721,8 +721,8 @@ __global__ void newKernelShadeCirclesParallel(int circle_bounding_boxes[][4]) {
         // float rad = cuConstRendererParams.radius[circleIndex];
 
         // a bunch of clamps.  Is there a CUDA built-in for this?
-        int screenMinX = circle_bounding_boxes[circleIndex][0];
-        int screenMaxX = circle_bounding_boxes[circleIndex][1];
+        short screenMinX = circle_bounding_boxes[circleIndex][0];
+        short screenMaxX = circle_bounding_boxes[circleIndex][1];
 
         if (xStart > screenMaxX || xStart + threadWidth < screenMinX) // check for nonintersection
             continue; 
@@ -731,8 +731,8 @@ __global__ void newKernelShadeCirclesParallel(int circle_bounding_boxes[][4]) {
         screenMinX = max(screenMinX, xStart);
         screenMaxX = min(screenMaxX, xStart + threadWidth);        
 
-        int screenMinY = circle_bounding_boxes[circleIndex][2];
-        int screenMaxY = circle_bounding_boxes[circleIndex][3];
+        short screenMinY = circle_bounding_boxes[circleIndex][2];
+        short screenMaxY = circle_bounding_boxes[circleIndex][3];
 
         // printf("values in cbb, shade pixels: %d, %d, %d, %d\n", circle_bounding_boxes[circleIndex][0], circle_bounding_boxes[circleIndex][1], circle_bounding_boxes[circleIndex][2], circle_bounding_boxes[circleIndex][3]);
 
@@ -848,11 +848,11 @@ CudaRenderer::render() {
     //     image->height / blockDim.y); // cuConstRendererParams.imageHeight
 
     // Version 2
-    int circle_bounding_boxes[numCircles][4]; // todo should initialize this to 0's
+    short circle_bounding_boxes[numCircles][4]; // todo should initialize this to 0's
 
-    int (*circle_bounding_boxes_device)[4];
-    cudaMalloc(&circle_bounding_boxes_device, numCircles * 4 * sizeof(int));
-    cudaMemcpy(circle_bounding_boxes_device, circle_bounding_boxes, numCircles * 4 * sizeof(int), cudaMemcpyHostToDevice);
+    short (*circle_bounding_boxes_device)[4];
+    cudaMalloc(&circle_bounding_boxes_device, numCircles * 4 * sizeof(short));
+    cudaMemcpy(circle_bounding_boxes_device, circle_bounding_boxes, numCircles * 4 * sizeof(short), cudaMemcpyHostToDevice);
 
     dim3 blockDim1(N_THREAD, 1);
     dim3 gridDim1((numCircles + blockDim1.x - 1) / blockDim1.x);

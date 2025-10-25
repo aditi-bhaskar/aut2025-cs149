@@ -24,7 +24,7 @@
 #define N_THREAD_Y 16
 
 // maximum circles we handle at once when shadin
-#define MAX_CIRCLES_AT_ONCE 1000000
+#define MAX_CIRCLES_AT_ONCE 5
 
 
 ////////////////////////////////////////////////////////////////////////////////////////

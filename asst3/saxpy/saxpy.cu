@@ -9,7 +9,6 @@
 
 #include "CycleTimer.h"
 
-
 // return GB/sec
 float GBPerSec(int bytes, float sec) {
   return static_cast<float>(bytes) / (1024. * 1024. * 1024.) / sec;

@@ -16,10 +16,12 @@
 #include "util.h"
 #include "CycleTimer.h"
 
-#define N_THREAD 256
+// for parallelized circle computation
+#define N_THREAD 1
 
-#define N_THREAD_X 16
-#define N_THREAD_Y 16
+// for parallel shading pixel computations
+#define N_THREAD_X 1
+#define N_THREAD_Y 1
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // Putting all the cuda kernels here
@@ -667,7 +669,6 @@ __global__ void newKernelComputeBBCirclesParallel(int circle_bounding_boxes[][4]
 
     // clock_t kernel_start = clock(); 
 
-
     short imageWidth = cuConstRendererParams.imageWidth;
     short imageHeight = cuConstRendererParams.imageHeight;
     short minX = static_cast<short>(imageWidth * (p.x - rad));
@@ -687,6 +688,9 @@ __global__ void newKernelComputeBBCirclesParallel(int circle_bounding_boxes[][4]
     circle_bounding_boxes[index][2] = (int)screenMinY;
     circle_bounding_boxes[index][3] = (int)screenMaxY;
 
+    // if (index==3) {        
+    // printf("values in cbb, compute bb: %d, %d, %d, %d\n", circle_bounding_boxes[index][0], circle_bounding_boxes[index][1], circle_bounding_boxes[index][2], circle_bounding_boxes[index][3]);
+    // }
     // clock_t kernel_end = clock(); 
 
     // printf("time spent on bounding box %.3f\n", (kernel_end-kernel_start));
@@ -714,26 +718,36 @@ __global__ void newKernelShadeCirclesParallel(int circle_bounding_boxes[][4]) {
         int index3 = 3 * circleIndex;
 
         float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
-        float rad = cuConstRendererParams.radius[circleIndex];
+        // float rad = cuConstRendererParams.radius[circleIndex];
 
         // a bunch of clamps.  Is there a CUDA built-in for this?
         int screenMinX = circle_bounding_boxes[circleIndex][0];
         int screenMaxX = circle_bounding_boxes[circleIndex][1];
 
-        if (xStart > screenMaxX || xStart + imageWidth < screenMinX)
+        if (xStart > screenMaxX || xStart + threadWidth < screenMinX) // check for nonintersection
             continue; 
+
+        // crop circle bounding box to match the thread's drawing box
+        screenMinX = max(screenMinX, xStart);
+        screenMaxX = min(screenMaxX, xStart + threadWidth);        
 
         int screenMinY = circle_bounding_boxes[circleIndex][2];
         int screenMaxY = circle_bounding_boxes[circleIndex][3];
 
-        if (yStart > screenMaxY || yStart + imageWidth < screenMinY)
+        // printf("values in cbb, shade pixels: %d, %d, %d, %d\n", circle_bounding_boxes[circleIndex][0], circle_bounding_boxes[circleIndex][1], circle_bounding_boxes[circleIndex][2], circle_bounding_boxes[circleIndex][3]);
+
+        if (yStart > screenMaxY || yStart + threadHeight < screenMinY) // check for nonintersection
             continue; 
+
+        // crop circle bounding box to match the thread's drawing box
+        screenMinY = max(screenMinY, yStart);
+        screenMaxY = min(screenMaxY, yStart + threadHeight);
 
         float invWidth = 1.f / imageWidth;
         float invHeight = 1.f / imageHeight;
 
         // clock_t kernel_end = clock(); 
-
+        
         // kernel_start = clock(); 
 
         for (int pixelY=screenMinY; pixelY<screenMaxY; pixelY++) {
@@ -741,6 +755,7 @@ __global__ void newKernelShadeCirclesParallel(int circle_bounding_boxes[][4]) {
             for (int pixelX=screenMinX; pixelX<screenMaxX; pixelX++) {
                 float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
                                                     invHeight * (static_cast<float>(pixelY) + 0.5f));
+                // printf("shading pixel\n");
                 shadePixel(circleIndex, pixelCenterNorm, p, imgPtr);
                 imgPtr++;
             }

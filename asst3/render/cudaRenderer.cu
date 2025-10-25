@@ -746,7 +746,7 @@ __global__ void newKernelComputeBBCirclesParallel(short circle_bounding_boxes[][
 
     // read position and radius
     float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
-    float  rad = cuConstRendererParams.radius[index];
+    float rad = cuConstRendererParams.radius[index];
 
     // clock_t kernel_start = clock(); 
 
@@ -764,10 +764,10 @@ __global__ void newKernelComputeBBCirclesParallel(short circle_bounding_boxes[][
     short screenMaxY = (maxY > 0) ? ((maxY < imageHeight) ? maxY : imageHeight) : 0;
 
     // add screen info to the arr
-    circle_bounding_boxes[index][0] = (short)screenMinX;
-    circle_bounding_boxes[index][1] = (short)screenMaxX;
-    circle_bounding_boxes[index][2] = (short)screenMinY;
-    circle_bounding_boxes[index][3] = (short)screenMaxY;
+    circle_bounding_boxes[index-start_circle_index][0] = (short)screenMinX;
+    circle_bounding_boxes[index-start_circle_index][1] = (short)screenMaxX;
+    circle_bounding_boxes[index-start_circle_index][2] = (short)screenMinY;
+    circle_bounding_boxes[index-start_circle_index][3] = (short)screenMaxY;
 
     // if (index==3) {        
     // printf("values in cbb, compute bb: %d, %d, %d, %d\n", circle_bounding_boxes[index][0], circle_bounding_boxes[index][1], circle_bounding_boxes[index][2], circle_bounding_boxes[index][3]);
@@ -803,8 +803,8 @@ __global__ void newKernelShadeCirclesParallel(short circle_bounding_boxes[][4], 
         // float rad = cuConstRendererParams.radius[circleIndex];
 
         // a bunch of clamps.  Is there a CUDA built-in for this?
-        short screenMinX = circle_bounding_boxes[circleIndex][0];
-        short screenMaxX = circle_bounding_boxes[circleIndex][1];
+        short screenMinX = circle_bounding_boxes[circleIndex-start_circle_index][0];
+        short screenMaxX = circle_bounding_boxes[circleIndex-start_circle_index][1];
 
         if (xStart > screenMaxX || xStart + threadWidth < screenMinX) // check for nonintersection
             continue; 
@@ -813,8 +813,8 @@ __global__ void newKernelShadeCirclesParallel(short circle_bounding_boxes[][4], 
         screenMinX = max(screenMinX, xStart);
         screenMaxX = min(screenMaxX, xStart + threadWidth);        
 
-        short screenMinY = circle_bounding_boxes[circleIndex][2];
-        short screenMaxY = circle_bounding_boxes[circleIndex][3];
+        short screenMinY = circle_bounding_boxes[circleIndex-start_circle_index][2];
+        short screenMaxY = circle_bounding_boxes[circleIndex-start_circle_index][3];
 
         // printf("values in cbb, shade pixels: %d, %d, %d, %d\n", circle_bounding_boxes[circleIndex][0], circle_bounding_boxes[circleIndex][1], circle_bounding_boxes[circleIndex][2], circle_bounding_boxes[circleIndex][3]);
 
@@ -868,11 +868,13 @@ CudaRenderer::render() {
     short num_circles_batches = (numCircles + MAX_CIRCLES_AT_ONCE - 1) / MAX_CIRCLES_AT_ONCE;
 
     for (short circle_batch = 0; circle_batch < num_circles_batches; circle_batch++) {
+    
+        printf("\n in circle batch loop \n ");
 
         int start_circle_index = circle_batch * MAX_CIRCLES_AT_ONCE; 
 
         dim3 blockDim1(N_THREAD, 1);
-        dim3 gridDim1((numCircles + blockDim1.x - 1) / blockDim1.x);
+        dim3 gridDim1((MAX_CIRCLES_AT_ONCE + blockDim1.x - 1) / blockDim1.x);
         newKernelComputeBBCirclesParallel<<<gridDim1, blockDim1>>>(circle_bounding_boxes_device, start_circle_index);
 
         dim3 blockDim2(N_THREAD_X, N_THREAD_Y);

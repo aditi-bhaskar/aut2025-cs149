@@ -23,6 +23,10 @@
 #define N_THREAD_X 16
 #define N_THREAD_Y 16
 
+// maximum circles we handle at once when shadin
+#define MAX_CIRCLES_AT_ONCE 1000000
+
+
 ////////////////////////////////////////////////////////////////////////////////////////
 // Putting all the cuda kernels here
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -653,119 +657,6 @@ CudaRenderer::oldrender() {
     cudaDeviceSynchronize();
 }
 
-// computes circle bounding boxes in parallel
-__global__ void newKernelComputeBBCirclesParallel(short circle_bounding_boxes[][4]) {
-
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (index >= cuConstRendererParams.numCircles)
-        return;
-
-    int index3 = 3 * index;
-
-    // read position and radius
-    float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
-    float  rad = cuConstRendererParams.radius[index];
-
-    // clock_t kernel_start = clock(); 
-
-    short imageWidth = cuConstRendererParams.imageWidth;
-    short imageHeight = cuConstRendererParams.imageHeight;
-    short minX = static_cast<short>(imageWidth * (p.x - rad));
-    short maxX = static_cast<short>(imageWidth * (p.x + rad)) + 1;
-    short minY = static_cast<short>(imageHeight * (p.y - rad));
-    short maxY = static_cast<short>(imageHeight * (p.y + rad)) + 1;
-
-    // a bunch of clamps.  Is there a CUDA built-in for this?
-    short screenMinX = (minX > 0) ? ((minX < imageWidth) ? minX : imageWidth) : 0;
-    short screenMaxX = (maxX > 0) ? ((maxX < imageWidth) ? maxX : imageWidth) : 0;
-    short screenMinY = (minY > 0) ? ((minY < imageHeight) ? minY : imageHeight) : 0;
-    short screenMaxY = (maxY > 0) ? ((maxY < imageHeight) ? maxY : imageHeight) : 0;
-
-    // add screen info to the arr
-    circle_bounding_boxes[index][0] = (short)screenMinX;
-    circle_bounding_boxes[index][1] = (short)screenMaxX;
-    circle_bounding_boxes[index][2] = (short)screenMinY;
-    circle_bounding_boxes[index][3] = (short)screenMaxY;
-
-    // if (index==3) {        
-    // printf("values in cbb, compute bb: %d, %d, %d, %d\n", circle_bounding_boxes[index][0], circle_bounding_boxes[index][1], circle_bounding_boxes[index][2], circle_bounding_boxes[index][3]);
-    // }
-    // clock_t kernel_end = clock(); 
-
-    // printf("time spent on bounding box %.3f\n", (kernel_end-kernel_start));
-
-}
-
-
-__global__ void newKernelShadeCirclesParallel(short circle_bounding_boxes[][4]) {
-
-    short imageWidth = cuConstRendererParams.imageWidth;
-    short imageHeight = cuConstRendererParams.imageHeight;
-
-    int threadWidth = blockDim.x / N_THREAD_X;
-    int threadHeight = blockDim.y / N_THREAD_Y;
-
-    int xStart = blockIdx.x * blockDim.x + threadIdx.x * threadWidth; 
-    int yStart = blockIdx.y * blockDim.y + threadIdx.y * threadHeight; 
-
-    if (xStart >= imageWidth || yStart >= imageHeight)
-        return;
-
-    // circle_bounding_boxes already computed
-
-    for (int circleIndex=0; circleIndex<cuConstRendererParams.numCircles; circleIndex++) {
-        int index3 = 3 * circleIndex;
-
-        float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
-        // float rad = cuConstRendererParams.radius[circleIndex];
-
-        // a bunch of clamps.  Is there a CUDA built-in for this?
-        short screenMinX = circle_bounding_boxes[circleIndex][0];
-        short screenMaxX = circle_bounding_boxes[circleIndex][1];
-
-        if (xStart > screenMaxX || xStart + threadWidth < screenMinX) // check for nonintersection
-            continue; 
-
-        // crop circle bounding box to match the thread's drawing box
-        screenMinX = max(screenMinX, xStart);
-        screenMaxX = min(screenMaxX, xStart + threadWidth);        
-
-        short screenMinY = circle_bounding_boxes[circleIndex][2];
-        short screenMaxY = circle_bounding_boxes[circleIndex][3];
-
-        // printf("values in cbb, shade pixels: %d, %d, %d, %d\n", circle_bounding_boxes[circleIndex][0], circle_bounding_boxes[circleIndex][1], circle_bounding_boxes[circleIndex][2], circle_bounding_boxes[circleIndex][3]);
-
-        if (yStart > screenMaxY || yStart + threadHeight < screenMinY) // check for nonintersection
-            continue; 
-
-        // crop circle bounding box to match the thread's drawing box
-        screenMinY = max(screenMinY, yStart);
-        screenMaxY = min(screenMaxY, yStart + threadHeight);
-
-        float invWidth = 1.f / imageWidth;
-        float invHeight = 1.f / imageHeight;
-
-        // clock_t kernel_end = clock(); 
-
-        // kernel_start = clock(); 
-
-        for (int pixelY=screenMinY; pixelY<screenMaxY; pixelY++) {
-            float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4 * (pixelY * imageWidth + screenMinX)]);
-            for (int pixelX=screenMinX; pixelX<screenMaxX; pixelX++) {
-                float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
-                                                    invHeight * (static_cast<float>(pixelY) + 0.5f));
-                // printf("shading pixel\n");
-                shadePixel(circleIndex, pixelCenterNorm, p, imgPtr);
-                imgPtr++;
-            }
-        }
-
-        // kernel_end = clock(); 
-        // printf("time spent on pixel shading: %.3f\n", (kernel_end-kernel_start));
-    }
-
-}
 
 
 // kernelRenderCircles -- (CUDA device code)
@@ -839,6 +730,126 @@ __global__ void newKernelRenderCircles() {
 
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////
+
+
+// computes circle bounding boxes in parallel
+__global__ void newKernelComputeBBCirclesParallel(short circle_bounding_boxes[][4], int start_circle_index) {
+
+    int index = blockIdx.x * blockDim.x + threadIdx.x + start_circle_index;
+
+    if (index >= cuConstRendererParams.numCircles)
+        return;
+
+    int index3 = 3 * index;
+
+    // read position and radius
+    float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
+    float  rad = cuConstRendererParams.radius[index];
+
+    // clock_t kernel_start = clock(); 
+
+    short imageWidth = cuConstRendererParams.imageWidth;
+    short imageHeight = cuConstRendererParams.imageHeight;
+    short minX = static_cast<short>(imageWidth * (p.x - rad));
+    short maxX = static_cast<short>(imageWidth * (p.x + rad)) + 1;
+    short minY = static_cast<short>(imageHeight * (p.y - rad));
+    short maxY = static_cast<short>(imageHeight * (p.y + rad)) + 1;
+
+    // a bunch of clamps.  Is there a CUDA built-in for this?
+    short screenMinX = (minX > 0) ? ((minX < imageWidth) ? minX : imageWidth) : 0;
+    short screenMaxX = (maxX > 0) ? ((maxX < imageWidth) ? maxX : imageWidth) : 0;
+    short screenMinY = (minY > 0) ? ((minY < imageHeight) ? minY : imageHeight) : 0;
+    short screenMaxY = (maxY > 0) ? ((maxY < imageHeight) ? maxY : imageHeight) : 0;
+
+    // add screen info to the arr
+    circle_bounding_boxes[index][0] = (short)screenMinX;
+    circle_bounding_boxes[index][1] = (short)screenMaxX;
+    circle_bounding_boxes[index][2] = (short)screenMinY;
+    circle_bounding_boxes[index][3] = (short)screenMaxY;
+
+    // if (index==3) {        
+    // printf("values in cbb, compute bb: %d, %d, %d, %d\n", circle_bounding_boxes[index][0], circle_bounding_boxes[index][1], circle_bounding_boxes[index][2], circle_bounding_boxes[index][3]);
+    // }
+    // clock_t kernel_end = clock(); 
+
+    // printf("time spent on bounding box %.3f\n", (kernel_end-kernel_start));
+
+}
+
+
+__global__ void newKernelShadeCirclesParallel(short circle_bounding_boxes[][4], int start_circle_index) {
+
+    short imageWidth = cuConstRendererParams.imageWidth;
+    short imageHeight = cuConstRendererParams.imageHeight;
+
+    int threadWidth = blockDim.x / N_THREAD_X;
+    int threadHeight = blockDim.y / N_THREAD_Y;
+
+    int xStart = blockIdx.x * blockDim.x + threadIdx.x * threadWidth; 
+    int yStart = blockIdx.y * blockDim.y + threadIdx.y * threadHeight; 
+
+    if (xStart >= imageWidth || yStart >= imageHeight)
+        return;
+
+    // circle_bounding_boxes already computed
+    int max_circle_index = min(start_circle_index+MAX_CIRCLES_AT_ONCE, cuConstRendererParams.numCircles);
+
+    for (int circleIndex=start_circle_index; circleIndex<max_circle_index; circleIndex++) {
+        int index3 = 3 * circleIndex;
+
+        float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
+        // float rad = cuConstRendererParams.radius[circleIndex];
+
+        // a bunch of clamps.  Is there a CUDA built-in for this?
+        short screenMinX = circle_bounding_boxes[circleIndex][0];
+        short screenMaxX = circle_bounding_boxes[circleIndex][1];
+
+        if (xStart > screenMaxX || xStart + threadWidth < screenMinX) // check for nonintersection
+            continue; 
+
+        // crop circle bounding box to match the thread's drawing box
+        screenMinX = max(screenMinX, xStart);
+        screenMaxX = min(screenMaxX, xStart + threadWidth);        
+
+        short screenMinY = circle_bounding_boxes[circleIndex][2];
+        short screenMaxY = circle_bounding_boxes[circleIndex][3];
+
+        // printf("values in cbb, shade pixels: %d, %d, %d, %d\n", circle_bounding_boxes[circleIndex][0], circle_bounding_boxes[circleIndex][1], circle_bounding_boxes[circleIndex][2], circle_bounding_boxes[circleIndex][3]);
+
+        if (yStart > screenMaxY || yStart + threadHeight < screenMinY) // check for nonintersection
+            continue; 
+
+        // crop circle bounding box to match the thread's drawing box
+        screenMinY = max(screenMinY, yStart);
+        screenMaxY = min(screenMaxY, yStart + threadHeight);
+
+        float invWidth = 1.f / imageWidth;
+        float invHeight = 1.f / imageHeight;
+
+        // clock_t kernel_end = clock(); 
+
+        // kernel_start = clock(); 
+
+        for (int pixelY=screenMinY; pixelY<screenMaxY; pixelY++) {
+            float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4 * (pixelY * imageWidth + screenMinX)]);
+            for (int pixelX=screenMinX; pixelX<screenMaxX; pixelX++) {
+                float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
+                                                    invHeight * (static_cast<float>(pixelY) + 0.5f));
+                // printf("shading pixel\n");
+                shadePixel(circleIndex, pixelCenterNorm, p, imgPtr);
+                imgPtr++;
+            }
+        }
+
+        // kernel_end = clock(); 
+        // printf("time spent on pixel shading: %.3f\n", (kernel_end-kernel_start));
+    }
+
+}
+
+
 void
 CudaRenderer::render() {
 
@@ -847,23 +858,32 @@ CudaRenderer::render() {
     // dim3 gridDim(image->width / blockDim.x, 
     //     image->height / blockDim.y); // cuConstRendererParams.imageHeight
 
-    // Version 2
+    // Version 2 (Oct 24, 25)
     short circle_bounding_boxes[numCircles][4]; // todo should initialize this to 0's
 
     short (*circle_bounding_boxes_device)[4];
     cudaMalloc(&circle_bounding_boxes_device, numCircles * 4 * sizeof(short));
     cudaMemcpy(circle_bounding_boxes_device, circle_bounding_boxes, numCircles * 4 * sizeof(short), cudaMemcpyHostToDevice);
 
-    dim3 blockDim1(N_THREAD, 1);
-    dim3 gridDim1((numCircles + blockDim1.x - 1) / blockDim1.x);
-    newKernelComputeBBCirclesParallel<<<gridDim1, blockDim1>>>(circle_bounding_boxes_device);
+    short num_circles_batches = (numCircles + MAX_CIRCLES_AT_ONCE - 1) / MAX_CIRCLES_AT_ONCE;
 
-    dim3 blockDim2(N_THREAD_X, N_THREAD_Y);
-    dim3 gridDim2(image->width / blockDim2.x, 
-        image->height / blockDim2.y); // cuConstRendererParams.imageHeight  
-    newKernelShadeCirclesParallel<<<gridDim2, blockDim2>>>(circle_bounding_boxes_device);
+    for (short circle_batch = 0; circle_batch < num_circles_batches; num_circles_batches++) {
 
-    // Version 1
+        int start_circle_index = num_circles_batches * MAX_CIRCLES_AT_ONCE; 
+
+        dim3 blockDim1(N_THREAD, 1);
+        dim3 gridDim1((numCircles + blockDim1.x - 1) / blockDim1.x);
+        newKernelComputeBBCirclesParallel<<<gridDim1, blockDim1>>>(circle_bounding_boxes_device, start_circle_index);
+
+        dim3 blockDim2(N_THREAD_X, N_THREAD_Y);
+        dim3 gridDim2(image->width / blockDim2.x, 
+            image->height / blockDim2.y); // cuConstRendererParams.imageHeight  
+        newKernelShadeCirclesParallel<<<gridDim2, blockDim2>>>(circle_bounding_boxes_device, start_circle_index);
+
+        cudaDeviceSynchronize();
+    }
+
+    // Version 1 (obsolete)
     // newKernelRenderCircles<<<gridDim, blockDim>>>();
 
     cudaDeviceSynchronize();

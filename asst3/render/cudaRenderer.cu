@@ -30,10 +30,6 @@
 #define K_CIRCLE_MAX_ALPHA (0.5f)
 #define FALLOFF_SCALE (4.f)
 
-// templating magic for computing alpha and rgb
-#define COMPUTE_RGB_TEMPLATE (cuConstRendererParams.sceneName == SNOWFLAKES || cuConstRendererParams.sceneName == SNOWFLAKES_SINGLE_FRAME) ?  rgb = lookupColor(sqrt(pixelDist) / rad) : rgb = *(float3*)&(cuConstRendererParams.color[(3 * circleIndex)]) 
-#define COMPUTE_ALPHA_TEMPLATE (cuConstRendererParams.sceneName == SNOWFLAKES || cuConstRendererParams.sceneName == SNOWFLAKES_SINGLE_FRAME) ?  alpha = (K_CIRCLE_MAX_ALPHA * fmaxf(fminf((.6f + .4f * (1.f-p.z)), 1.f), 0.f)) * exp(-1.f * FALLOFF_SCALE * ((pixelDist) / (rad*rad))) / rad :  alpha = .5f
-
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // Putting all the cuda kernels here
@@ -825,7 +821,6 @@ __global__ void newKernelComputeBBCirclesParallel(short circle_bounding_boxes[][
 
 }
 
-
 __global__ void newKernelShadeCirclesParallel(short circle_bounding_boxes[][4], int start_circle_index) {
 
     short imageWidth = cuConstRendererParams.imageWidth;
@@ -879,44 +874,52 @@ __global__ void newKernelShadeCirclesParallel(short circle_bounding_boxes[][4], 
 
         // kernel_start = clock(); 
 
+        float3 rgb;
+        float alpha;
 
-        for (int pixelY=screenMinY; pixelY<screenMaxY; pixelY++) {
-            float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4 * (pixelY * imageWidth + screenMinX)]);
-            for (int pixelX=screenMinX; pixelX<screenMaxX; pixelX++) {
-                float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
-                                                    invHeight * (static_cast<float>(pixelY) + 0.5f));
-                // printf("shading pixel\n");
+        // it's ok to have a huge if/else because ALL threads will take the snowflake path, or the normal path. there is no divergence.
+        if (cuConstRendererParams.sceneName == SNOWFLAKES || cuConstRendererParams.sceneName == SNOWFLAKES_SINGLE_FRAME) {
+            for (int pixelY=screenMinY; pixelY<screenMaxY; pixelY++) {
+                float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4 * (pixelY * imageWidth + screenMinX)]);
+                for (int pixelX=screenMinX; pixelX<screenMaxX; pixelX++) {
+                    float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
+                                                        invHeight * (static_cast<float>(pixelY) + 0.5f));
 
+                    float diffX = p.x - pixelCenterNorm.x;
+                    float diffY = p.y - pixelCenterNorm.y;
+                    float pixelDist = diffX * diffX + diffY * diffY;
 
+                    float rad = cuConstRendererParams.radius[circleIndex];;
 
-                float3 rgb;
-                float alpha;
+                    rgb = lookupColor(sqrt(pixelDist) / rad);
+                    alpha = (K_CIRCLE_MAX_ALPHA * fmaxf(fminf((.6f + .4f * (1.f-p.z)), 1.f), 0.f)) * exp(-1.f * FALLOFF_SCALE * ((pixelDist) / (rad*rad)));
 
-                float diffX = p.x - pixelCenterNorm.x;
-                float diffY = p.y - pixelCenterNorm.y;
-                float pixelDist = diffX * diffX + diffY * diffY;
+                    shadePixel(circleIndex, pixelCenterNorm, p, imgPtr, rgb, alpha);
+                    imgPtr++;
+                }
+            }
+        } else {
+            for (int pixelY=screenMinY; pixelY<screenMaxY; pixelY++) {
+                float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4 * (pixelY * imageWidth + screenMinX)]);
+                for (int pixelX=screenMinX; pixelX<screenMaxX; pixelX++) {
+                    float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
+                                                        invHeight * (static_cast<float>(pixelY) + 0.5f));
 
-                float rad = cuConstRendererParams.radius[circleIndex];;
+                    float diffX = p.x - pixelCenterNorm.x;
+                    float diffY = p.y - pixelCenterNorm.y;
+                    // float pixelDist = diffX * diffX + diffY * diffY;
 
-                // TODO: could use some specialized template magic).
-                COMPUTE_RGB_TEMPLATE;
-                COMPUTE_ALPHA_TEMPLATE;
-                
-                // if (cuConstRendererParams.sceneName == SNOWFLAKES || cuConstRendererParams.sceneName == SNOWFLAKES_SINGLE_FRAME) {
-                //     rgb = lookupColor(sqrt(pixelDist) / rad);
-                //     alpha = (K_CIRCLE_MAX_ALPHA * fmaxf(fminf((.6f + .4f * (1.f-p.z)), 1.f), 0.f)) * exp(-1.f * FALLOFF_SCALE * ((pixelDist) / (rad*rad)));
-                // } else {
-                //     // simple: each circle has an assigned color
-                //     rgb = *(float3*)&(cuConstRendererParams.color[(3 * circleIndex)]);
-                //     alpha = .5f;
-                // }
-
-
-                // shadePixel(int circleIndex, float2 pixelCenter, float3 p, float4* imagePtr, float rgb, float alpha) {
-                shadePixel(circleIndex, pixelCenterNorm, p, imgPtr, rgb, alpha);
-                imgPtr++;
+                    // float rad = cuConstRendererParams.radius[circleIndex];;
+                    
+                    rgb = *(float3*)&(cuConstRendererParams.color[(3 * circleIndex)]);
+                    alpha = .5f;
+                        
+                    shadePixel(circleIndex, pixelCenterNorm, p, imgPtr, rgb, alpha);
+                    imgPtr++;
+                }
             }
         }
+
 
         // kernel_end = clock(); 
         // printf("time spent on pixel shading: %.3f\n", (kernel_end-kernel_start));

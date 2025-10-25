@@ -18,10 +18,10 @@ Dumping frames to logs/output_xxx.ppm
 Wrote image file logs/output_0000.ppm
 Copying image data from device
 ***************** Correctness check passed **************************
-Clear:    0.1326 ms
-Advance:  0.0022 ms
-Render:   82.3103 ms
-Total:    82.4450 ms
-File IO:  91.4026 ms
+Clear:    0.1366 ms
+Advance:  0.0020 ms
+Render:   80.6680 ms
+Total:    80.8066 ms
+File IO:  90.9060 ms
 
-Overall:  9.2238 sec (note units are seconds)
+Overall:  9.2379 sec (note units are seconds)

@@ -26,6 +26,10 @@
 // maximum circles we handle at once when shadin
 #define MAX_CIRCLES_AT_ONCE 10000
 
+// constants for the shading computation
+#define K_CIRCLE_MAX_ALPHA (0.5f)
+#define FALLOFF_SCALE (4.f)
+
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // Putting all the cuda kernels here
@@ -887,23 +891,14 @@ __global__ void newKernelShadeCirclesParallel(short circle_bounding_boxes[][4], 
 
                 float rad = cuConstRendererParams.radius[circleIndex];;
 
-
                 // TODO: could use some specialized template magic).
                 if (cuConstRendererParams.sceneName == SNOWFLAKES || cuConstRendererParams.sceneName == SNOWFLAKES_SINGLE_FRAME) {
-                    const float kCircleMaxAlpha = .5f;
-                    const float falloffScale = 4.f;
-
-                    float normPixelDist = sqrt(pixelDist) / rad;
-                    rgb = lookupColor(normPixelDist);
-
-                    float maxAlpha = .6f + .4f * (1.f-p.z);
-                    maxAlpha = kCircleMaxAlpha * fmaxf(fminf(maxAlpha, 1.f), 0.f); // kCircleMaxAlpha * clamped value
-                    alpha = maxAlpha * exp(-1.f * falloffScale * normPixelDist * normPixelDist);
+                    rgb = lookupColor(sqrt(pixelDist) / rad);
+                    alpha = (K_CIRCLE_MAX_ALPHA * fmaxf(fminf((.6f + .4f * (1.f-p.z)), 1.f), 0.f)) * exp(-1.f * FALLOFF_SCALE * ((pixelDist) / (rad*rad)));
 
                 } else {
                     // simple: each circle has an assigned color
-                    int index3 = 3 * circleIndex;
-                    rgb = *(float3*)&(cuConstRendererParams.color[index3]);
+                    rgb = *(float3*)&(cuConstRendererParams.color[(3 * circleIndex)]);
                     alpha = .5f;
                 }
 

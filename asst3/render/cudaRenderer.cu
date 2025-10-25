@@ -17,11 +17,11 @@
 #include "CycleTimer.h"
 
 // for parallelized circle computation
-#define N_THREAD 1
+#define N_THREAD 256
 
 // for parallel shading pixel computations
-#define N_THREAD_X 1
-#define N_THREAD_Y 1
+#define N_THREAD_X 16
+#define N_THREAD_Y 16
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // Putting all the cuda kernels here
@@ -747,7 +747,7 @@ __global__ void newKernelShadeCirclesParallel(int circle_bounding_boxes[][4]) {
         float invHeight = 1.f / imageHeight;
 
         // clock_t kernel_end = clock(); 
-        
+
         // kernel_start = clock(); 
 
         for (int pixelY=screenMinY; pixelY<screenMaxY; pixelY++) {
@@ -854,7 +854,7 @@ CudaRenderer::render() {
     cudaMalloc(&circle_bounding_boxes_device, numCircles * 4 * sizeof(int));
     cudaMemcpy(circle_bounding_boxes_device, circle_bounding_boxes, numCircles * 4 * sizeof(int), cudaMemcpyHostToDevice);
 
-    dim3 blockDim1(256, 1);
+    dim3 blockDim1(N_THREAD, 1);
     dim3 gridDim1((numCircles + blockDim1.x - 1) / blockDim1.x);
     newKernelComputeBBCirclesParallel<<<gridDim1, blockDim1>>>(circle_bounding_boxes_device);
 

@@ -927,6 +927,61 @@ __global__ void newKernelShadeCirclesParallel(short circle_bounding_boxes[][4], 
 
 }
 
+/////////////////////////////////////////////////////////////////
+/// VERSION 3 ////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////
+
+
+__global__ void newKernelShaderCircleBitfieldParallel(short circle_bitfield[][][numCircles], int start_circle_index) {
+
+    short imageWidth = cuConstRendererParams.imageWidth;
+    short imageHeight = cuConstRendererParams.imageHeight;
+
+    int threadWidth = blockDim.x / N_THREAD_X;
+    int threadHeight = blockDim.y / N_THREAD_Y;
+
+    int xStart = blockIdx.x * blockDim.x + threadIdx.x * threadWidth; 
+    int yStart = blockIdx.y * blockDim.y + threadIdx.y * threadHeight; 
+
+    if (xStart >= imageWidth || yStart >= imageHeight)
+        return;
+
+    short imageWidth = cuConstRendererParams.imageWidth;
+    short imageHeight = cuConstRendererParams.imageHeight;
+    short minX = static_cast<short>(imageWidth * (p.x - rad));
+    short maxX = static_cast<short>(imageWidth * (p.x + rad)) + 1;
+    short minY = static_cast<short>(imageHeight * (p.y - rad));
+    short maxY = static_cast<short>(imageHeight * (p.y + rad)) + 1;
+
+    // a bunch of clamps.  Is there a CUDA built-in for this?
+    short screenMinX = (minX > xStart) ? ((minX < threadWidth) ? minX : threadWidth) : xStart;
+    short screenMaxX = (maxX > xStart) ? ((maxX < threadWidth) ? maxX : threadWidth) : xStart;
+    short screenMinY = (minY > yStart) ? ((minY < threadHeight) ? minY : threadHeight) : yStart;
+    short screenMaxY = (maxY > yStart) ? ((maxY < threadHeight) ? maxY : threadHeight) : yStart;
+
+    for (int circleIndex=0; circleIndex<cuConstRendererParams.numCircles; circleIndex++) {
+        for (int pixelY=screenMinY; pixelY<screenMaxY; pixelY++) {
+            for (int pixelX=screenMinX; pixelX<screenMaxX; pixelX++) {    
+            
+                // based on their provided function in circleBoxTest.cu_inl
+                float distX = pixelX - circleX;
+                float distY = pixelY - circleY;
+                circle_bitfield[pixelY][pixelX][circleIndex] = ( ((distX*distX) + (distY*distY)) <= (circleRadius*circleRadius) ) ? true : false;
+
+            }
+        }
+    }
+
+}
+
+
+
+
+__global__ void newKernelShaderCircleBBShadeParallel(short circle_bitfield[][4], int start_circle_index) {
+
+
+}
+
 
 void
 CudaRenderer::render() {
@@ -936,36 +991,55 @@ CudaRenderer::render() {
     // dim3 gridDim(image->width / blockDim.x, 
     //     image->height / blockDim.y); // cuConstRendererParams.imageHeight
 
-    // Version 2 (Oct 24, 25)
-    short circle_bounding_boxes[MAX_CIRCLES_AT_ONCE][4]; // todo should initialize this to 0's
 
-    short (*circle_bounding_boxes_device)[4];
-    cudaMalloc(&circle_bounding_boxes_device, MAX_CIRCLES_AT_ONCE * 4 * sizeof(short));
-    cudaMemcpy(circle_bounding_boxes_device, circle_bounding_boxes, MAX_CIRCLES_AT_ONCE * 4 * sizeof(short), cudaMemcpyHostToDevice);
+    // Version 3 (Oct 25)
+    bool circle_bitfield[imageHeight][imageWidth][numCircles]; // todo should make this a bitfield
 
-    short num_circles_batches = (numCircles + MAX_CIRCLES_AT_ONCE - 1) / MAX_CIRCLES_AT_ONCE;
+    bool (*circle_bitfield_device)[numCircles];
 
-    for (short circle_batch = 0; circle_batch < num_circles_batches; circle_batch++) {
+    cudaMalloc(&circle_bitfield_device, numCircles * imageWidth * imageHeight * sizeof(bool));
+    cudaMemcpy(circle_bitfield_device, circle_bitfield, numCircles * imageWidth * imageHeight * sizeof(bool), cudaMemcpyHostToDevice);
+
+    // parallelize across pixels, iterate through all circles to see which ones intersect
+    dim3 blockDim1(N_THREAD_X, N_THREAD_Y);
+    dim3 gridDim1(image->width / blockDim2.x, image->height / blockDim2.y);
+    newKernelShaderCircleBitfieldParallel<<<gridDim1, blockDim1>>>(circle_bitfield_device, 0);
+
+    // dim3 blockDim2(N_THREAD_X, N_THREAD_Y);
+    // dim3 gridDim2(image->width / blockDim2.x, image->height / blockDim2.y); // cuConstRendererParams.imageHeight  
+    // newKernelShaderCircleBBShadeParallel<<<gridDim2, blockDim2>>>(circle_bitfield_device, 0);
+
+    cudaDeviceSynchronize();
+
+
+    // // Version 2 (Oct 24, 25)
+    // short circle_bounding_boxes[MAX_CIRCLES_AT_ONCE][4]; // todo should initialize this to 0's
+
+    // short (*circle_bounding_boxes_device)[4];
+    // cudaMalloc(&circle_bounding_boxes_device, MAX_CIRCLES_AT_ONCE * 4 * sizeof(short));
+    // cudaMemcpy(circle_bounding_boxes_device, circle_bounding_boxes, MAX_CIRCLES_AT_ONCE * 4 * sizeof(short), cudaMemcpyHostToDevice);
+
+    // short num_circles_batches = (numCircles + MAX_CIRCLES_AT_ONCE - 1) / MAX_CIRCLES_AT_ONCE;
+
+    // for (short circle_batch = 0; circle_batch < num_circles_batches; circle_batch++) {
     
-        printf("\n in circle batch loop \n ");
+    //     int start_circle_index = circle_batch * MAX_CIRCLES_AT_ONCE; 
 
-        int start_circle_index = circle_batch * MAX_CIRCLES_AT_ONCE; 
+    //     dim3 blockDim1(N_THREAD, 1);
+    //     dim3 gridDim1((MAX_CIRCLES_AT_ONCE + blockDim1.x - 1) / blockDim1.x);
+    //     newKernelComputeBBCirclesParallel<<<gridDim1, blockDim1>>>(circle_bounding_boxes_device, start_circle_index);
 
-        dim3 blockDim1(N_THREAD, 1);
-        dim3 gridDim1((MAX_CIRCLES_AT_ONCE + blockDim1.x - 1) / blockDim1.x);
-        newKernelComputeBBCirclesParallel<<<gridDim1, blockDim1>>>(circle_bounding_boxes_device, start_circle_index);
+    //     // cudaDeviceSynchronize();
 
-        // cudaDeviceSynchronize();
+    //     dim3 blockDim2(N_THREAD_X, N_THREAD_Y);
+    //     dim3 gridDim2(image->width / blockDim2.x, 
+    //         image->height / blockDim2.y); // cuConstRendererParams.imageHeight  
+    //     newKernelShadeCirclesParallel<<<gridDim2, blockDim2>>>(circle_bounding_boxes_device, start_circle_index);
 
-        dim3 blockDim2(N_THREAD_X, N_THREAD_Y);
-        dim3 gridDim2(image->width / blockDim2.x, 
-            image->height / blockDim2.y); // cuConstRendererParams.imageHeight  
-        newKernelShadeCirclesParallel<<<gridDim2, blockDim2>>>(circle_bounding_boxes_device, start_circle_index);
+    //     cudaDeviceSynchronize();
+    // }
 
-        cudaDeviceSynchronize();
-    }
-
-    // Version 1 (obsolete)
+    // // Version 1 (obsolete)
     // newKernelRenderCircles<<<gridDim, blockDim>>>();
 
     cudaDeviceSynchronize();

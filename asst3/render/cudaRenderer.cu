@@ -970,3 +970,4 @@ CudaRenderer::render() {
 
     cudaDeviceSynchronize();
 }
+

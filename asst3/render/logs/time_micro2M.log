@@ -1,6 +1,5 @@
 Rendering to 1024x1024 image
-Loaded scene with 1000000 circles
-Loaded scene with 1000000 circles
+Loaded scene with 2000000 circles
 ---------------------------------------------------------
 Initializing CUDA for CudaRenderer
 Found 1 CUDA devices
@@ -10,7 +9,7 @@ Device 0: NVIDIA T4G
    CUDA Cap:   7.5
 ---------------------------------------------------------
 
-Running benchmark, 1 frames, beginning at frame 0 ...
+Running benchmark, 4 frames, beginning at frame 0 ...
 Dumping frames to logs/output_xxx.ppm
 
  in circle batch loop 
@@ -212,14 +211,99 @@ Dumping frames to logs/output_xxx.ppm
  in circle batch loop 
  
  in circle batch loop 
- Copying image data from device
-Wrote image file logs/output_0000.ppm
-Copying image data from device
-***************** Correctness check passed **************************
-Clear:    0.1407 ms
-Advance:  0.0020 ms
-Render:   3637.3008 ms
-Total:    3637.4435 ms
-File IO:  91.8728 ms
-
-Overall:  8.6683 sec (note units are seconds)
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle

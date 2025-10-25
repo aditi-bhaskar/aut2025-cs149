@@ -1,6 +1,6 @@
 Rendering to 1024x1024 image
-Loaded scene with 1000000 circles
-Loaded scene with 1000000 circles
+Loaded scene with 2000000 circles
+Loaded scene with 2000000 circles
 ---------------------------------------------------------
 Initializing CUDA for CudaRenderer
 Found 1 CUDA devices
@@ -212,14 +212,214 @@ Dumping frames to logs/output_xxx.ppm
  in circle batch loop 
  
  in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
+ 
+ in circle batch loop 
  Copying image data from device
 Wrote image file logs/output_0000.ppm
 Copying image data from device
 ***************** Correctness check passed **************************
-Clear:    0.1407 ms
-Advance:  0.0020 ms
-Render:   3637.3008 ms
-Total:    3637.4435 ms
-File IO:  91.8728 ms
+Clear:    0.1384 ms
+Advance:  0.0023 ms
+Render:   7459.1140 ms
+Total:    7459.2548 ms
+File IO:  91.5261 ms
 
-Overall:  8.6683 sec (note units are seconds)
+Overall:  7.8986 sec (note units are seconds)
